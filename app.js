@@ -879,7 +879,7 @@ async function initAds() {
 }
 
 function loadAdsenseScript(publisherId) {
-  const existing = document.querySelector("script[data-adsense-loader]");
+  const existing = document.querySelector(`script[src*="adsbygoogle.js?client=${publisherId}"], script[data-adsense-loader]`);
   if (existing) return Promise.resolve();
 
   return new Promise((resolve, reject) => {
