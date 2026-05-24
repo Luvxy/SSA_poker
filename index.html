@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>싸칙 포커</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main id="app" class="app">
+      <section id="setup" class="setup-screen">
+        <div class="brand-mark" aria-hidden="true">
+          <span>7</span>
+          <span>×</span>
+          <span>?</span>
+        </div>
+        <h1>싸칙 포커</h1>
+        <p>숫자와 사칙연산 카드로 목표 숫자에 가장 가까운 식을 만드는 2~4인 턴제 카드 게임</p>
+        <div class="setup-controls" aria-label="게임 설정">
+          <label for="playerCount">플레이어 수</label>
+          <select id="playerCount">
+            <option value="2">2명</option>
+            <option value="3">3명</option>
+            <option value="4" selected>4명</option>
+          </select>
+          <button id="startGame" type="button">게임 시작</button>
+        </div>
+      </section>
+
+      <section id="table" class="table-screen hidden" aria-live="polite">
+        <header class="top-bar">
+          <div>
+            <span class="eyebrow">목표 숫자</span>
+            <strong id="targetNumber" class="target-number">0</strong>
+          </div>
+          <div>
+            <span class="eyebrow">현재 단계</span>
+            <strong id="phaseName">1턴 숫자 카드</strong>
+          </div>
+          <div>
+            <span class="eyebrow">팟</span>
+            <strong><span id="potAmount">0</span>칩</strong>
+          </div>
+          <button id="newRound" type="button" class="icon-button" title="새 라운드" aria-label="새 라운드">↻</button>
+        </header>
+
+        <section class="play-area">
+          <div id="players" class="players-grid"></div>
+          <aside class="action-panel">
+            <div class="turn-card">
+              <span class="eyebrow">진행</span>
+              <h2 id="turnTitle">플레이어 1 차례</h2>
+              <p id="turnMessage">받은 카드를 확인하고 베팅하세요.</p>
+            </div>
+
+            <div id="betControls" class="bet-controls">
+              <label for="betAmount">베팅 칩</label>
+              <div class="bet-row">
+                <input id="betAmount" type="range" min="0" max="5" value="1" />
+                <output id="betValue" for="betAmount">1</output>
+              </div>
+              <div class="button-row">
+                <button id="confirmBet" type="button">베팅</button>
+                <button id="foldPlayer" type="button" class="secondary">폴드</button>
+              </div>
+            </div>
+
+            <div id="expressionControls" class="expression-controls hidden">
+              <div class="expression-preview" id="expressionPreview">? + ? = ?</div>
+              <div id="expressionInputs" class="expression-inputs"></div>
+              <button id="submitExpression" type="button">식 확정</button>
+            </div>
+
+            <div id="resultPanel" class="result-panel hidden"></div>
+          </aside>
+        </section>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
