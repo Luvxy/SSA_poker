@@ -261,7 +261,7 @@ select {
 
 .top-bar {
   display: grid;
-  grid-template-columns: minmax(130px, 1fr) minmax(180px, 1.6fr) minmax(110px, 1fr) 52px;
+  grid-template-columns: minmax(90px, 0.7fr) minmax(160px, 1.2fr) minmax(150px, 1fr) minmax(100px, 0.7fr);
   align-items: center;
   gap: 12px;
   width: min(1180px, 100%);
@@ -292,7 +292,7 @@ select {
 
 .target-number {
   color: var(--coral);
-  font-size: 36px;
+  font-size: clamp(22px, 3vw, 34px);
   line-height: 1;
 }
 
@@ -406,6 +406,11 @@ select {
   font-weight: 800;
 }
 
+.empty-hand {
+  color: #756b60;
+  font-weight: 900;
+}
+
 .action-panel {
   display: grid;
   align-content: start;
@@ -442,6 +447,8 @@ select {
 .turn-card,
 .bet-controls,
 .expression-controls,
+.rule-controls,
+.market-panel,
 .result-panel {
   border-radius: 8px;
   padding: 16px;
@@ -493,9 +500,42 @@ output {
   gap: 10px;
 }
 
-.expression-controls {
+.expression-controls,
+.rule-controls,
+.market-panel {
   display: grid;
   gap: 14px;
+}
+
+.market-cards {
+  display: grid;
+  gap: 10px;
+}
+
+.market-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--paper-soft);
+}
+
+.market-item .card {
+  width: 48px;
+  height: 64px;
+  font-size: 22px;
+}
+
+.market-item div:not(.card) {
+  display: grid;
+  gap: 2px;
+}
+
+.market-item span {
+  color: #6e6254;
+  font-weight: 900;
 }
 
 .expression-preview {

@@ -15,7 +15,7 @@
           <span>?</span>
         </div>
         <h1>싸칙 포커</h1>
-        <p>방 코드를 공유해 친구와 함께 숫자와 사칙연산 카드로 목표 숫자에 가장 가까운 식을 만들어 보세요.</p>
+        <p>10라운드 동안 숫자와 사칙연산 카드로 식을 만들고, 라운드마다 달라지는 승리룰에 맞춰 코인을 겨루세요.</p>
 
         <div class="setup-tabs" role="tablist" aria-label="플레이 방식">
           <button id="localTab" class="tab-button active" type="button">한 기기에서</button>
@@ -75,18 +75,21 @@
       <section id="table" class="table-screen hidden" aria-live="polite">
         <header class="top-bar">
           <div>
-            <span class="eyebrow">목표 숫자</span>
-            <strong id="targetNumber" class="target-number">0</strong>
+            <span class="eyebrow">라운드</span>
+            <strong><span id="roundNumber">1</span>/10</strong>
+          </div>
+          <div>
+            <span class="eyebrow">승리룰</span>
+            <strong id="targetNumber" class="target-number">가장 큰 수</strong>
           </div>
           <div>
             <span class="eyebrow">현재 단계</span>
-            <strong id="phaseName">1턴 숫자 카드</strong>
+            <strong id="phaseName">1페이즈 숫자</strong>
           </div>
           <div>
             <span class="eyebrow">팟</span>
-            <strong><span id="potAmount">0</span>칩</strong>
+            <strong><span id="potAmount">0</span>코인</strong>
           </div>
-          <button id="newRound" type="button" class="icon-button" title="새 라운드" aria-label="새 라운드">↻</button>
         </header>
 
         <section class="play-area">
@@ -101,18 +104,23 @@
             <div class="turn-card">
               <span class="eyebrow">진행</span>
               <h2 id="turnTitle">플레이어 1 차례</h2>
-              <p id="turnMessage">받은 카드를 확인한 후 베팅하세요.</p>
+              <p id="turnMessage">카드를 확인하고 행동하세요.</p>
+            </div>
+
+            <div id="marketPanel" class="market-panel hidden">
+              <span class="eyebrow">판매 카드</span>
+              <div id="marketCards" class="market-cards"></div>
             </div>
 
             <div id="betControls" class="bet-controls">
-              <label for="betAmount">베팅 칩</label>
+              <label for="betAmount">베팅 코인</label>
               <div class="bet-row">
-                <input id="betAmount" type="range" min="0" max="5" value="1" />
+                <input id="betAmount" type="range" min="0" max="10" value="1" />
                 <output id="betValue" for="betAmount">1</output>
               </div>
               <div class="button-row">
                 <button id="confirmBet" type="button">베팅</button>
-                <button id="foldPlayer" type="button" class="secondary">폴드</button>
+                <button id="foldPlayer" type="button" class="secondary">다이</button>
               </div>
             </div>
 
@@ -122,12 +130,22 @@
               <button id="submitExpression" type="button">식 확정</button>
             </div>
 
+            <div id="ruleControls" class="rule-controls hidden">
+              <label for="nextRuleType">다음 라운드 승리룰</label>
+              <select id="nextRuleType">
+                <option value="target">1~50 랜덤 숫자에 가장 가까운 사람</option>
+                <option value="max">가장 큰 수를 만든 사람</option>
+                <option value="min">가장 작은 수를 만든 사람</option>
+              </select>
+              <button id="confirmRule" type="button">룰 확정하고 다음 라운드</button>
+            </div>
+
             <div id="resultPanel" class="result-panel hidden"></div>
           </aside>
         </section>
       </section>
     </main>
 
-    <script type="module" src="app.js?v=20260524-multiplayer2"></script>
+    <script type="module" src="app.js?v=20260524-rules2"></script>
   </body>
 </html>
