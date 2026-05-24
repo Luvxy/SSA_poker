@@ -1,16 +1,38 @@
+const FIREBASE_SDK_VERSION = "11.10.0";
 const NUMBER_JOKER = "숫자 조커";
 const OPERATOR_JOKER = "사칙 조커";
 const OPERATORS = ["+", "-", "×", "÷"];
+const ROOM_CODE_LENGTH = 6;
 
 const setupEl = document.querySelector("#setup");
+const lobbyEl = document.querySelector("#lobby");
 const tableEl = document.querySelector("#table");
+const localTabEl = document.querySelector("#localTab");
+const onlineTabEl = document.querySelector("#onlineTab");
+const localSetupEl = document.querySelector("#localSetup");
+const onlineSetupEl = document.querySelector("#onlineSetup");
 const playerCountEl = document.querySelector("#playerCount");
+const playerNameEl = document.querySelector("#playerName");
+const roomCodeInputEl = document.querySelector("#roomCodeInput");
+const firebaseStatusEl = document.querySelector("#firebaseStatus");
+const createRoomEl = document.querySelector("#createRoom");
+const joinRoomEl = document.querySelector("#joinRoom");
 const startGameEl = document.querySelector("#startGame");
+const roomCodeLabelEl = document.querySelector("#roomCodeLabel");
+const copyRoomCodeEl = document.querySelector("#copyRoomCode");
+const lobbyPlayersEl = document.querySelector("#lobbyPlayers");
+const onlinePlayerCountEl = document.querySelector("#onlinePlayerCount");
+const startOnlineGameEl = document.querySelector("#startOnlineGame");
+const leaveRoomEl = document.querySelector("#leaveRoom");
+const lobbyMessageEl = document.querySelector("#lobbyMessage");
 const newRoundEl = document.querySelector("#newRound");
 const targetNumberEl = document.querySelector("#targetNumber");
 const phaseNameEl = document.querySelector("#phaseName");
 const potAmountEl = document.querySelector("#potAmount");
 const playersEl = document.querySelector("#players");
+const roomPanelEl = document.querySelector("#roomPanel");
+const activeRoomCodeEl = document.querySelector("#activeRoomCode");
+const copyActiveRoomCodeEl = document.querySelector("#copyActiveRoomCode");
 const turnTitleEl = document.querySelector("#turnTitle");
 const turnMessageEl = document.querySelector("#turnMessage");
 const betControlsEl = document.querySelector("#betControls");
@@ -24,15 +46,84 @@ const expressionPreviewEl = document.querySelector("#expressionPreview");
 const submitExpressionEl = document.querySelector("#submitExpression");
 const resultPanelEl = document.querySelector("#resultPanel");
 
-const state = {
-  players: [],
-  deck: [],
-  target: 0,
-  pot: 0,
-  phase: "setup",
-  actorIndex: 0,
-  expressionIndex: 0,
+const client = {
+  id: getClientId(),
+  firebase: null,
+  roomRef: null,
+  unsubscribe: null,
+  roomCode: null,
+  onlineReady: false,
 };
+
+let state = createEmptyState();
+
+function createEmptyState() {
+  return {
+    mode: "local",
+    status: "setup",
+    hostId: null,
+    maxPlayers: 4,
+    players: [],
+    deck: [],
+    target: 0,
+    pot: 0,
+    phase: "setup",
+    actorIndex: 0,
+    expressionIndex: 0,
+    resultHtml: "",
+  };
+}
+
+function getClientId() {
+  const queryClientId = new URLSearchParams(window.location.search).get("client");
+  if (queryClientId) return queryClientId;
+  const saved = localStorage.getItem("ssaPokerClientId");
+  if (saved) return saved;
+  const id = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+  localStorage.setItem("ssaPokerClientId", id);
+  return id;
+}
+
+async function initFirebase() {
+  try {
+    const firebaseConfig = await loadFirebaseConfig();
+    const appModule = await import(`https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-app.js`);
+    const firestoreModule = await import(`https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-firestore.js`);
+    const app = appModule.initializeApp(firebaseConfig);
+    client.firebase = {
+      db: firestoreModule.getFirestore(app),
+      doc: firestoreModule.doc,
+      getDoc: firestoreModule.getDoc,
+      setDoc: firestoreModule.setDoc,
+      updateDoc: firestoreModule.updateDoc,
+      onSnapshot: firestoreModule.onSnapshot,
+      serverTimestamp: firestoreModule.serverTimestamp,
+    };
+    client.onlineReady = true;
+    firebaseStatusEl.textContent = "온라인 방을 만들거나 참가할 수 있습니다.";
+  } catch (error) {
+    client.onlineReady = false;
+    firebaseStatusEl.textContent = `Firebase 연결 실패: ${error.message}`;
+    createRoomEl.disabled = true;
+    joinRoomEl.disabled = true;
+  }
+}
+
+async function loadFirebaseConfig() {
+  try {
+    const configModule = await import(`./firebase-config.js?cache=${Date.now()}`);
+    if (configModule.firebaseConfig) return configModule.firebaseConfig;
+  } catch (error) {
+    // Firebase console snippets often contain bare SDK imports, so fall back to reading the config object.
+  }
+
+  const response = await fetch(`./firebase-config.js?cache=${Date.now()}`);
+  if (!response.ok) throw new Error("firebase-config.js를 찾을 수 없습니다.");
+  const source = await response.text();
+  const match = source.match(/(?:const|let|var)\s+firebaseConfig\s*=\s*({[\s\S]*?});/);
+  if (!match) throw new Error("firebaseConfig 객체를 찾을 수 없습니다.");
+  return Function(`"use strict"; return (${match[1]});`)();
+}
 
 function createDeck() {
   const cards = [];
@@ -56,40 +147,50 @@ function shuffle(cards) {
   return copied;
 }
 
-function drawCard(kind) {
-  const cardIndex = state.deck.findIndex((card) => card.kind === kind || card.kind === `${kind}-joker`);
-  return state.deck.splice(cardIndex, 1)[0];
+function drawCard(game, kind) {
+  const cardIndex = game.deck.findIndex((card) => card.kind === kind || card.kind === `${kind}-joker`);
+  return game.deck.splice(cardIndex, 1)[0];
 }
 
-function startGame() {
-  const count = Number(playerCountEl.value);
-  state.players = Array.from({ length: count }, (_, index) => ({
-    name: `플레이어 ${index + 1}`,
+function createPlayer(id, name, index) {
+  return {
+    id,
+    name: name || `플레이어 ${index + 1}`,
     chips: 20,
     hand: [],
     folded: false,
     bets: 0,
     expression: null,
-  }));
-  setupEl.classList.add("hidden");
-  tableEl.classList.remove("hidden");
+  };
+}
+
+function startLocalGame() {
+  const count = Number(playerCountEl.value);
+  state = createEmptyState();
+  state.mode = "local";
+  state.status = "playing";
+  state.players = Array.from({ length: count }, (_, index) => createPlayer(`local-${index}`, `플레이어 ${index + 1}`, index));
+  showTable();
   startRound();
 }
 
 function startRound() {
-  state.deck = createDeck();
-  state.target = randomInt(0, 20);
-  state.pot = 0;
-  state.phase = "number1";
-  state.actorIndex = 0;
-  state.expressionIndex = 0;
-  for (const player of state.players) {
-    player.hand = [drawCard("number")];
+  const next = cloneGame(state);
+  next.deck = createDeck();
+  next.target = randomInt(0, 20);
+  next.pot = 0;
+  next.phase = "number1";
+  next.status = "playing";
+  next.actorIndex = 0;
+  next.expressionIndex = 0;
+  next.resultHtml = "";
+  for (const player of next.players) {
+    player.hand = [drawCard(next, "number")];
     player.folded = false;
     player.bets = 0;
     player.expression = null;
   }
-  render();
+  commitGame(next);
 }
 
 function randomInt(min, max) {
@@ -101,15 +202,31 @@ function getPhaseLabel() {
   if (state.phase === "operator") return "2턴 사칙연산 카드";
   if (state.phase === "number2") return "3턴 숫자 카드";
   if (state.phase === "expression") return "4턴 식 완성";
+  if (state.phase === "lobby") return "대기실";
   return "결과";
 }
 
-function activePlayers() {
-  return state.players.filter((player) => !player.folded);
+function activePlayers(game = state) {
+  return game.players.filter((player) => !player.folded);
 }
 
-function currentActor() {
-  return state.players[state.actorIndex];
+function currentActor(game = state) {
+  return game.players[game.actorIndex];
+}
+
+function currentExpressionPlayer(game = state) {
+  return game.players[game.expressionIndex];
+}
+
+function isHost() {
+  return state.mode === "local" || state.hostId === client.id;
+}
+
+function isMyTurn() {
+  if (state.mode === "local") return true;
+  if (["number1", "operator", "number2"].includes(state.phase)) return currentActor()?.id === client.id;
+  if (state.phase === "expression") return currentExpressionPlayer()?.id === client.id;
+  return false;
 }
 
 function clampBet(value, player) {
@@ -117,72 +234,78 @@ function clampBet(value, player) {
 }
 
 function placeBet() {
-  const player = currentActor();
+  if (!isMyTurn()) return;
+  const next = cloneGame(state);
+  const player = currentActor(next);
   const amount = clampBet(betAmountEl.value, player);
   player.chips -= amount;
   player.bets += amount;
-  state.pot += amount;
-  advanceBetTurn();
+  next.pot += amount;
+  advanceBetTurn(next);
+  commitGame(next);
 }
 
 function foldPlayer() {
-  const player = currentActor();
+  if (!isMyTurn()) return;
+  const next = cloneGame(state);
+  const player = currentActor(next);
   player.folded = true;
-  if (activePlayers().length <= 1) {
-    finishByFold();
-    return;
+  if (activePlayers(next).length <= 1) {
+    finishByFold(next);
+  } else {
+    advanceBetTurn(next);
   }
-  advanceBetTurn();
+  commitGame(next);
 }
 
-function advanceBetTurn() {
-  const nextIndex = findNextPlayerIndex(state.actorIndex + 1);
-  if (nextIndex === -1 || nextIndex <= state.actorIndex) {
-    advancePhase();
+function advanceBetTurn(game) {
+  const nextIndex = findNextPlayerIndex(game, game.actorIndex + 1);
+  if (nextIndex === -1 || nextIndex <= game.actorIndex) {
+    advancePhase(game);
     return;
   }
-  state.actorIndex = nextIndex;
-  render();
+  game.actorIndex = nextIndex;
 }
 
-function findNextPlayerIndex(startIndex) {
-  for (let index = startIndex; index < state.players.length; index += 1) {
-    if (!state.players[index].folded) return index;
+function findNextPlayerIndex(game, startIndex) {
+  for (let index = startIndex; index < game.players.length; index += 1) {
+    if (!game.players[index].folded) return index;
   }
   return -1;
 }
 
-function advancePhase() {
-  if (state.phase === "number1") {
-    state.phase = "operator";
-    dealToActive("operator");
-    state.actorIndex = findNextPlayerIndex(0);
-  } else if (state.phase === "operator") {
-    state.phase = "number2";
-    dealToActive("number");
-    state.actorIndex = findNextPlayerIndex(0);
-  } else if (state.phase === "number2") {
-    state.phase = "expression";
-    state.expressionIndex = findNextExpressionIndex(0);
-  }
-  render();
-}
-
-function dealToActive(kind) {
-  for (const player of state.players) {
-    if (!player.folded) player.hand.push(drawCard(kind));
+function advancePhase(game) {
+  if (game.phase === "number1") {
+    game.phase = "operator";
+    dealToActive(game, "operator");
+    game.actorIndex = findNextPlayerIndex(game, 0);
+  } else if (game.phase === "operator") {
+    game.phase = "number2";
+    dealToActive(game, "number");
+    game.actorIndex = findNextPlayerIndex(game, 0);
+  } else if (game.phase === "number2") {
+    game.phase = "expression";
+    game.expressionIndex = findNextExpressionIndex(game, 0);
   }
 }
 
-function findNextExpressionIndex(startIndex) {
-  for (let index = startIndex; index < state.players.length; index += 1) {
-    if (!state.players[index].folded && !state.players[index].expression) return index;
+function dealToActive(game, kind) {
+  for (const player of game.players) {
+    if (!player.folded) player.hand.push(drawCard(game, kind));
+  }
+}
+
+function findNextExpressionIndex(game, startIndex) {
+  for (let index = startIndex; index < game.players.length; index += 1) {
+    if (!game.players[index].folded && !game.players[index].expression) return index;
   }
   return -1;
 }
 
 function submitExpression() {
-  const player = state.players[state.expressionIndex];
+  if (!isMyTurn()) return;
+  const next = cloneGame(state);
+  const player = currentExpressionPlayer(next);
   const numberValues = getNumberValues(player);
   const operatorValue = getOperatorValue(player);
   const expression = {
@@ -209,16 +332,16 @@ function submitExpression() {
   }
 
   expression.result = evaluateExpression(expression);
-  expression.distance = Math.abs(expression.result - state.target);
+  expression.distance = Math.abs(expression.result - next.target);
   player.expression = expression;
 
-  const nextIndex = findNextExpressionIndex(state.expressionIndex + 1);
+  const nextIndex = findNextExpressionIndex(next, next.expressionIndex + 1);
   if (nextIndex === -1) {
-    finishRound();
-    return;
+    finishRound(next);
+  } else {
+    next.expressionIndex = nextIndex;
   }
-  state.expressionIndex = nextIndex;
-  render();
+  commitGame(next);
 }
 
 function getNumberValues(player) {
@@ -246,7 +369,7 @@ function canUseNumberPair(player, a, b) {
 }
 
 function cardCanBe(card, value) {
-  return card.kind === "number-joker" || card.value === value;
+  return card?.kind === "number-joker" || card?.value === value;
 }
 
 function evaluateExpression({ a, op, b }) {
@@ -256,21 +379,22 @@ function evaluateExpression({ a, op, b }) {
   return Number((a / b).toFixed(2));
 }
 
-function finishByFold() {
-  const winner = activePlayers()[0];
-  winner.chips += state.pot;
-  state.phase = "result";
-  resultPanelEl.innerHTML = `<h2>${winner.name} 승리</h2><p>다른 플레이어가 모두 폴드해서 팟 ${state.pot}칩을 가져갑니다.</p>`;
-  render();
+function finishByFold(game) {
+  const winner = activePlayers(game)[0];
+  winner.chips += game.pot;
+  game.phase = "result";
+  game.status = "result";
+  game.resultHtml = `<h2>${winner.name} 승리</h2><p>다른 플레이어가 모두 폴드해서 팟 ${game.pot}칩을 가져갑니다.</p>`;
 }
 
-function finishRound() {
-  const contestants = activePlayers();
+function finishRound(game) {
+  const contestants = activePlayers(game);
   const bestDistance = Math.min(...contestants.map((player) => player.expression.distance));
   const winners = contestants.filter((player) => player.expression.distance === bestDistance);
-  const prize = Math.floor(state.pot / winners.length);
+  const prize = Math.floor(game.pot / winners.length);
   for (const winner of winners) winner.chips += prize;
-  state.phase = "result";
+  game.phase = "result";
+  game.status = "result";
 
   const title = winners.length > 1 ? "무승부" : `${winners[0].name} 승리`;
   const scoreRows = contestants
@@ -279,14 +403,170 @@ function finishRound() {
       return `<div class="score-row"><span>${player.name}: ${a} ${op} ${b} = ${result}</span><span>차이 ${distance}</span></div>`;
     })
     .join("");
-  resultPanelEl.innerHTML = `<h2>${title}</h2><p>목표 숫자 ${state.target}에 가장 가까운 식이 이겼습니다.</p><div class="score-list">${scoreRows}</div>`;
+  game.resultHtml = `<h2>${title}</h2><p>목표 숫자 ${game.target}에 가장 가까운 식이 이겼습니다.</p><div class="score-list">${scoreRows}</div>`;
+}
+
+function cloneGame(game) {
+  return JSON.parse(JSON.stringify(game));
+}
+
+async function commitGame(next) {
+  state = next;
   render();
+  if (state.mode === "online" && client.roomRef) {
+    await client.firebase.setDoc(client.roomRef, {
+      ...sanitizeForFirestore(state),
+      updatedAt: client.firebase.serverTimestamp(),
+    }, { merge: true });
+  }
+}
+
+function sanitizeForFirestore(game) {
+  const clean = JSON.parse(JSON.stringify(game));
+  delete clean.updatedAt;
+  return clean;
+}
+
+async function createRoom() {
+  if (!client.onlineReady) return;
+  const name = getPlayerName();
+  const code = createRoomCode();
+  const roomRef = client.firebase.doc(client.firebase.db, "ssaPokerRooms", code);
+  const game = createEmptyState();
+  game.mode = "online";
+  game.status = "lobby";
+  game.phase = "lobby";
+  game.hostId = client.id;
+  game.maxPlayers = Number(onlinePlayerCountEl.value);
+  game.players = [createPlayer(client.id, name, 0)];
+  await client.firebase.setDoc(roomRef, {
+    ...game,
+    roomCode: code,
+    updatedAt: client.firebase.serverTimestamp(),
+  });
+  enterRoom(code, roomRef);
+}
+
+async function joinRoom() {
+  if (!client.onlineReady) return;
+  const code = normalizeRoomCode(roomCodeInputEl.value);
+  if (!code) {
+    firebaseStatusEl.textContent = "참가할 방 코드를 입력하세요.";
+    return;
+  }
+  const roomRef = client.firebase.doc(client.firebase.db, "ssaPokerRooms", code);
+  const snapshot = await client.firebase.getDoc(roomRef);
+  if (!snapshot.exists()) {
+    firebaseStatusEl.textContent = "해당 방을 찾을 수 없습니다.";
+    return;
+  }
+  const game = snapshot.data();
+  if (game.status !== "lobby") {
+    firebaseStatusEl.textContent = "이미 게임이 시작된 방입니다.";
+    return;
+  }
+  if (game.players.length >= game.maxPlayers) {
+    firebaseStatusEl.textContent = "방이 가득 찼습니다.";
+    return;
+  }
+  if (!game.players.some((player) => player.id === client.id)) {
+    game.players.push(createPlayer(client.id, getPlayerName(), game.players.length));
+    await client.firebase.setDoc(roomRef, {
+      ...sanitizeForFirestore(game),
+      updatedAt: client.firebase.serverTimestamp(),
+    }, { merge: true });
+  }
+  enterRoom(code, roomRef);
+}
+
+function enterRoom(code, roomRef) {
+  client.roomCode = code;
+  client.roomRef = roomRef;
+  if (client.unsubscribe) client.unsubscribe();
+  client.unsubscribe = client.firebase.onSnapshot(roomRef, (snapshot) => {
+    if (!snapshot.exists()) return;
+    state = snapshot.data();
+    state.mode = "online";
+    client.roomCode = code;
+    if (state.status === "lobby") {
+      showLobby();
+      renderLobby();
+    } else {
+      showTable();
+      render();
+    }
+  }, (error) => {
+    firebaseStatusEl.textContent = `방 동기화 오류: ${error.message}`;
+  });
+}
+
+async function startOnlineGame() {
+  if (state.players.length < 2) return;
+  startRound();
+}
+
+async function leaveRoom() {
+  if (client.unsubscribe) client.unsubscribe();
+  client.unsubscribe = null;
+  client.roomRef = null;
+  client.roomCode = null;
+  state = createEmptyState();
+  showSetup();
+}
+
+function createRoomCode() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let index = 0; index < ROOM_CODE_LENGTH; index += 1) {
+    code += alphabet[Math.floor(Math.random() * alphabet.length)];
+  }
+  return code;
+}
+
+function normalizeRoomCode(code) {
+  return code.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, ROOM_CODE_LENGTH);
+}
+
+function getPlayerName() {
+  return playerNameEl.value.trim() || "플레이어";
+}
+
+function showSetup() {
+  setupEl.classList.remove("hidden");
+  lobbyEl.classList.add("hidden");
+  tableEl.classList.add("hidden");
+}
+
+function showLobby() {
+  setupEl.classList.add("hidden");
+  lobbyEl.classList.remove("hidden");
+  tableEl.classList.add("hidden");
+}
+
+function showTable() {
+  setupEl.classList.add("hidden");
+  lobbyEl.classList.add("hidden");
+  tableEl.classList.remove("hidden");
+}
+
+function renderLobby() {
+  roomCodeLabelEl.textContent = client.roomCode;
+  onlinePlayerCountEl.value = String(state.maxPlayers);
+  onlinePlayerCountEl.disabled = !isHost();
+  startOnlineGameEl.disabled = state.players.length < 2;
+  lobbyPlayersEl.innerHTML = state.players
+    .map((player) => `<div class="lobby-player"><strong>${player.name}</strong><span>${player.id === state.hostId ? "방장" : "참가자"}</span></div>`)
+    .join("");
+  lobbyMessageEl.textContent = "2명 이상 모이면 게임을 시작할 수 있습니다.";
 }
 
 function render() {
   targetNumberEl.textContent = state.target;
   phaseNameEl.textContent = getPhaseLabel();
   potAmountEl.textContent = state.pot;
+  roomPanelEl.classList.toggle("hidden", state.mode !== "online");
+  activeRoomCodeEl.textContent = client.roomCode || "------";
+  newRoundEl.disabled = false;
   renderPlayers();
   renderPanel();
 }
@@ -296,7 +576,8 @@ function renderPlayers() {
   playersEl.innerHTML = state.players
     .map((player, index) => {
       const isActive = index === activeIndex && state.phase !== "result";
-      const hand = player.hand.map((card) => renderCard(card, state.phase === "result" || isActive)).join("");
+      const reveal = shouldRevealHand(player, isActive);
+      const hand = player.hand.map((card) => renderCard(card, reveal)).join("");
       const status = player.folded ? "폴드" : player.expression ? "식 확정" : `${player.bets}칩 베팅`;
       return `
         <article class="player-seat ${isActive ? "active" : ""} ${player.folded ? "folded" : ""}">
@@ -315,6 +596,12 @@ function renderPlayers() {
     .join("");
 }
 
+function shouldRevealHand(player, isActive) {
+  if (state.phase === "result") return true;
+  if (state.mode === "local") return isActive;
+  return player.id === client.id;
+}
+
 function renderCard(card, revealed) {
   if (!revealed) return `<div class="card back">?</div>`;
   const className = card.kind.includes("joker") ? "joker" : card.kind;
@@ -323,27 +610,37 @@ function renderCard(card, revealed) {
 }
 
 function renderPanel() {
-  betControlsEl.classList.toggle("hidden", !["number1", "operator", "number2"].includes(state.phase));
+  const bettingPhase = ["number1", "operator", "number2"].includes(state.phase);
+  betControlsEl.classList.toggle("hidden", !bettingPhase);
   expressionControlsEl.classList.toggle("hidden", state.phase !== "expression");
   resultPanelEl.classList.toggle("hidden", state.phase !== "result");
 
-  if (["number1", "operator", "number2"].includes(state.phase)) {
+  if (bettingPhase) {
     const player = currentActor();
     const maxBet = Math.min(5, player.chips);
     betAmountEl.max = String(maxBet);
     betAmountEl.value = String(Math.min(Number(betAmountEl.value), maxBet));
     betValueEl.value = betAmountEl.value;
-    confirmBetEl.disabled = maxBet === 0;
+    confirmBetEl.disabled = maxBet === 0 || !isMyTurn();
+    foldPlayerEl.disabled = !isMyTurn();
     turnTitleEl.textContent = `${player.name} 차례`;
-    turnMessageEl.textContent = "현재 플레이어의 카드만 공개됩니다. 카드를 확인한 뒤 베팅하거나 폴드하세요.";
+    turnMessageEl.textContent = isMyTurn()
+      ? "내 카드가 공개되었습니다. 베팅하거나 폴드하세요."
+      : "다른 플레이어의 차례입니다. 잠시 기다려 주세요.";
   } else if (state.phase === "expression") {
-    const player = state.players[state.expressionIndex];
+    const player = currentExpressionPlayer();
     turnTitleEl.textContent = `${player.name} 식 만들기`;
-    turnMessageEl.textContent = "보유한 두 숫자 카드와 사칙연산 카드로 목표에 가까운 식을 완성하세요.";
-    renderExpressionInputs(player);
+    turnMessageEl.textContent = isMyTurn()
+      ? "보유한 두 숫자 카드와 사칙연산 카드로 목표에 가까운 식을 완성하세요."
+      : "다른 플레이어가 식을 확정하는 중입니다.";
+    if (isMyTurn()) renderExpressionInputs(player);
+    submitExpressionEl.disabled = !isMyTurn();
   } else if (state.phase === "result") {
     turnTitleEl.textContent = "라운드 종료";
-    turnMessageEl.textContent = "새 라운드를 눌러 같은 플레이어로 다시 시작할 수 있습니다.";
+    turnMessageEl.textContent = state.mode === "online" && !isHost()
+      ? "방장이 새 라운드를 시작할 수 있습니다."
+      : "새 라운드를 눌러 같은 플레이어로 다시 시작할 수 있습니다.";
+    resultPanelEl.innerHTML = state.resultHtml;
   }
 }
 
@@ -386,11 +683,52 @@ function updateExpressionPreview() {
   expressionPreviewEl.textContent = `${a} ${op} ${b} = ${result}`;
 }
 
+async function copyRoomCode() {
+  const code = client.roomCode;
+  if (!code) return;
+  await navigator.clipboard.writeText(code);
+  lobbyMessageEl.textContent = "방 코드를 복사했습니다.";
+}
+
+function switchSetupMode(mode) {
+  const online = mode === "online";
+  localTabEl.classList.toggle("active", !online);
+  onlineTabEl.classList.toggle("active", online);
+  localSetupEl.classList.toggle("hidden", online);
+  onlineSetupEl.classList.toggle("hidden", !online);
+}
+
+function applyRoomLink() {
+  const roomCode = normalizeRoomCode(new URLSearchParams(window.location.search).get("room") || "");
+  if (!roomCode) return;
+  roomCodeInputEl.value = roomCode;
+  switchSetupMode("online");
+}
+
 betAmountEl.addEventListener("input", () => {
   betValueEl.value = betAmountEl.value;
 });
-startGameEl.addEventListener("click", startGame);
+roomCodeInputEl.addEventListener("input", () => {
+  roomCodeInputEl.value = normalizeRoomCode(roomCodeInputEl.value);
+});
+onlinePlayerCountEl.addEventListener("change", async () => {
+  if (!isHost() || state.status !== "lobby") return;
+  state.maxPlayers = Number(onlinePlayerCountEl.value);
+  await commitGame(state);
+});
+localTabEl.addEventListener("click", () => switchSetupMode("local"));
+onlineTabEl.addEventListener("click", () => switchSetupMode("online"));
+startGameEl.addEventListener("click", startLocalGame);
+createRoomEl.addEventListener("click", createRoom);
+joinRoomEl.addEventListener("click", joinRoom);
+startOnlineGameEl.addEventListener("click", startOnlineGame);
+leaveRoomEl.addEventListener("click", leaveRoom);
+copyRoomCodeEl.addEventListener("click", copyRoomCode);
+copyActiveRoomCodeEl.addEventListener("click", copyRoomCode);
 newRoundEl.addEventListener("click", startRound);
 confirmBetEl.addEventListener("click", placeBet);
 foldPlayerEl.addEventListener("click", foldPlayer);
 submitExpressionEl.addEventListener("click", submitExpression);
+
+applyRoomLink();
+initFirebase();

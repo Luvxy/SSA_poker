@@ -15,15 +15,60 @@
           <span>?</span>
         </div>
         <h1>싸칙 포커</h1>
-        <p>숫자와 사칙연산 카드로 목표 숫자에 가장 가까운 식을 만드는 2~4인 턴제 카드 게임</p>
-        <div class="setup-controls" aria-label="게임 설정">
+        <p>방 코드를 공유해 친구와 함께 숫자와 사칙연산 카드로 목표 숫자에 가장 가까운 식을 만들어 보세요.</p>
+
+        <div class="setup-tabs" role="tablist" aria-label="플레이 방식">
+          <button id="localTab" class="tab-button active" type="button">한 기기에서</button>
+          <button id="onlineTab" class="tab-button" type="button">온라인 방</button>
+        </div>
+
+        <div id="localSetup" class="setup-panel">
           <label for="playerCount">플레이어 수</label>
           <select id="playerCount">
             <option value="2">2명</option>
             <option value="3">3명</option>
             <option value="4" selected>4명</option>
           </select>
-          <button id="startGame" type="button">게임 시작</button>
+          <button id="startGame" type="button">로컬 게임 시작</button>
+        </div>
+
+        <div id="onlineSetup" class="setup-panel hidden">
+          <label for="playerName">내 이름</label>
+          <input id="playerName" type="text" maxlength="16" placeholder="플레이어" />
+          <div class="button-row">
+            <button id="createRoom" type="button">방 만들기</button>
+            <button id="joinRoom" type="button" class="secondary">방 참가</button>
+          </div>
+          <label for="roomCodeInput">방 코드</label>
+          <input id="roomCodeInput" type="text" maxlength="6" placeholder="예: A7K2Q9" />
+          <p id="firebaseStatus" class="setup-note">Firebase 설정을 확인하는 중입니다.</p>
+        </div>
+      </section>
+
+      <section id="lobby" class="lobby-screen hidden">
+        <header class="lobby-header">
+          <div>
+            <span class="eyebrow">방 코드</span>
+            <strong id="roomCodeLabel" class="room-code">------</strong>
+          </div>
+          <button id="copyRoomCode" type="button">코드 복사</button>
+        </header>
+        <div class="lobby-body">
+          <div>
+            <span class="eyebrow">참가자</span>
+            <div id="lobbyPlayers" class="lobby-players"></div>
+          </div>
+          <div class="lobby-actions">
+            <label for="onlinePlayerCount">최대 플레이어</label>
+            <select id="onlinePlayerCount">
+              <option value="2">2명</option>
+              <option value="3">3명</option>
+              <option value="4" selected>4명</option>
+            </select>
+            <button id="startOnlineGame" type="button">온라인 게임 시작</button>
+            <button id="leaveRoom" type="button" class="secondary">나가기</button>
+            <p id="lobbyMessage">친구에게 방 코드를 공유하세요.</p>
+          </div>
         </div>
       </section>
 
@@ -47,10 +92,16 @@
         <section class="play-area">
           <div id="players" class="players-grid"></div>
           <aside class="action-panel">
+            <div id="roomPanel" class="room-panel hidden">
+              <span class="eyebrow">온라인 방</span>
+              <strong id="activeRoomCode">------</strong>
+              <button id="copyActiveRoomCode" type="button" class="small-button">코드 복사</button>
+            </div>
+
             <div class="turn-card">
               <span class="eyebrow">진행</span>
               <h2 id="turnTitle">플레이어 1 차례</h2>
-              <p id="turnMessage">받은 카드를 확인하고 베팅하세요.</p>
+              <p id="turnMessage">받은 카드를 확인한 후 베팅하세요.</p>
             </div>
 
             <div id="betControls" class="bet-controls">
@@ -77,6 +128,6 @@
       </section>
     </main>
 
-    <script src="app.js"></script>
+    <script type="module" src="app.js?v=20260524-multiplayer2"></script>
   </body>
 </html>
