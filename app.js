@@ -854,9 +854,10 @@ async function initAds() {
 
   const adTargets = [...document.querySelectorAll("[data-ad-placement]")];
   const activeTargets = adTargets.filter((target) => adsConfig.slots?.[target.dataset.adPlacement]);
-  if (activeTargets.length === 0) return;
 
   await loadAdsenseScript(adsConfig.publisherId);
+
+  if (activeTargets.length === 0 || adsConfig.autoOnly) return;
 
   for (const target of activeTargets) {
     const slot = adsConfig.slots[target.dataset.adPlacement];
