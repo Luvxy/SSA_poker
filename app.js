@@ -842,6 +842,57 @@ async function copyRoomCode() {
   lobbyMessageEl.textContent = "방 코드를 복사했습니다.";
 }
 
+async function initAds() {
+  let adsConfig;
+  try {
+    const module = await import(`./ads-config.js?cache=${Date.now()}`);
+    adsConfig = module.adsConfig;
+  } catch (error) {
+    return;
+  }
+  if (!adsConfig?.enabled || !adsConfig.publisherId) return;
+
+  const adTargets = [...document.querySelectorAll("[data-ad-placement]")];
+  const activeTargets = adTargets.filter((target) => adsConfig.slots?.[target.dataset.adPlacement]);
+  if (activeTargets.length === 0) return;
+
+  await loadAdsenseScript(adsConfig.publisherId);
+
+  for (const target of activeTargets) {
+    const slot = adsConfig.slots[target.dataset.adPlacement];
+    target.classList.remove("hidden");
+    target.innerHTML = `
+      <ins class="adsbygoogle"
+        style="display:block"
+        data-ad-client="${adsConfig.publisherId}"
+        data-ad-slot="${slot}"
+        data-ad-format="auto"
+        data-full-width-responsive="true"></ins>
+    `;
+    try {
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+    } catch (error) {
+      target.classList.add("hidden");
+    }
+  }
+}
+
+function loadAdsenseScript(publisherId) {
+  const existing = document.querySelector("script[data-adsense-loader]");
+  if (existing) return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.async = true;
+    script.crossOrigin = "anonymous";
+    script.dataset.adsenseLoader = "true";
+    script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(publisherId)}`;
+    script.onload = resolve;
+    script.onerror = () => reject(new Error("AdSense 스크립트를 불러오지 못했습니다."));
+    document.head.appendChild(script);
+  });
+}
+
 function switchSetupMode(mode) {
   const online = mode === "online";
   localTabEl.classList.toggle("active", !online);
@@ -883,4 +934,5 @@ submitExpressionEl.addEventListener("click", submitExpression);
 confirmRuleEl.addEventListener("click", chooseRuleAndStartRound);
 
 applyRoomLink();
+initAds();
 initFirebase();

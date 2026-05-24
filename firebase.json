@@ -10,7 +10,9 @@
       "**/.*",
       "**/node_modules/**",
       "README.md",
-      "firebase-config.example.js"
+      "firebase-config.example.js",
+      "ads-config.example.js",
+      "ads.txt.example"
     ]
   }
 }
