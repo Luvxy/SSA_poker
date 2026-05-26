@@ -7,7 +7,7 @@ const STARTING_COINS = 50;
 const MAX_ROUNDS = 10;
 const MARKET_PRICE = 1;
 
-const setupEl = document.querySelector("#setup");
+const setupEl = document.querySelector("#play");
 const contentEl = document.querySelector("#content");
 const lobbyEl = document.querySelector("#lobby");
 const tableEl = document.querySelector("#table");
