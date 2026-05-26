@@ -7,7 +7,7 @@ const STARTING_COINS = 50;
 const MAX_ROUNDS = 10;
 const MARKET_PRICE = 1;
 
-const setupEl = document.querySelector("#play");
+const setupEl = document.querySelector("#play") || document.querySelector("#setup");
 const contentEl = document.querySelector("#content");
 const lobbyEl = document.querySelector("#lobby");
 const tableEl = document.querySelector("#table");
@@ -648,24 +648,29 @@ function getPlayerName() {
 }
 
 function showSetup() {
-  contentEl.classList.remove("hidden");
-  setupEl.classList.remove("hidden");
-  lobbyEl.classList.add("hidden");
-  tableEl.classList.add("hidden");
+  setHidden(contentEl, false);
+  setHidden(setupEl, false);
+  setHidden(lobbyEl, true);
+  setHidden(tableEl, true);
 }
 
 function showLobby() {
-  contentEl.classList.add("hidden");
-  setupEl.classList.add("hidden");
-  lobbyEl.classList.remove("hidden");
-  tableEl.classList.add("hidden");
+  setHidden(contentEl, true);
+  setHidden(setupEl, true);
+  setHidden(lobbyEl, false);
+  setHidden(tableEl, true);
 }
 
 function showTable() {
-  contentEl.classList.add("hidden");
-  setupEl.classList.add("hidden");
-  lobbyEl.classList.add("hidden");
-  tableEl.classList.remove("hidden");
+  setHidden(contentEl, true);
+  setHidden(setupEl, true);
+  setHidden(lobbyEl, true);
+  setHidden(tableEl, false);
+}
+
+function setHidden(element, hidden) {
+  if (!element) return;
+  element.classList.toggle("hidden", hidden);
 }
 
 function renderLobby() {
