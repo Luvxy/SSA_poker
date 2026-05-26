@@ -8,6 +8,7 @@ const MAX_ROUNDS = 10;
 const MARKET_PRICE = 1;
 
 const setupEl = document.querySelector("#setup");
+const contentEl = document.querySelector("#content");
 const lobbyEl = document.querySelector("#lobby");
 const tableEl = document.querySelector("#table");
 const localTabEl = document.querySelector("#localTab");
@@ -647,18 +648,21 @@ function getPlayerName() {
 }
 
 function showSetup() {
+  contentEl.classList.remove("hidden");
   setupEl.classList.remove("hidden");
   lobbyEl.classList.add("hidden");
   tableEl.classList.add("hidden");
 }
 
 function showLobby() {
+  contentEl.classList.add("hidden");
   setupEl.classList.add("hidden");
   lobbyEl.classList.remove("hidden");
   tableEl.classList.add("hidden");
 }
 
 function showTable() {
+  contentEl.classList.add("hidden");
   setupEl.classList.add("hidden");
   lobbyEl.classList.add("hidden");
   tableEl.classList.remove("hidden");

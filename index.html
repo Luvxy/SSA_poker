@@ -3,7 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>싸칙 포커</title>
+    <meta
+      name="description"
+      content="싸칙 포커는 숫자 카드와 사칙연산 카드로 식을 만들어 10라운드 동안 코인을 겨루는 브라우저 카드 게임입니다. 규칙, 카드 구성, 전략, 온라인 방 플레이를 제공합니다."
+    />
+    <title>싸칙 포커 - 사칙연산 카드 게임</title>
     <script
       async
       src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5322425731380321"
@@ -12,15 +16,128 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <header class="site-header">
+      <a class="site-logo" href="/">
+        <span>7</span>
+        <span>×</span>
+        <span>?</span>
+        <strong>싸칙 포커</strong>
+      </a>
+      <nav class="site-nav" aria-label="주요 메뉴">
+        <a href="#rules">규칙</a>
+        <a href="#strategy">전략</a>
+        <a href="#play">플레이</a>
+        <a href="privacy.html">개인정보</a>
+        <a href="contact.html">문의</a>
+      </nav>
+    </header>
+
     <main id="app" class="app">
-      <section id="setup" class="setup-screen">
+      <section id="content" class="content-shell">
+        <section class="hero-section">
+          <div class="hero-copy">
+            <p class="eyebrow">브라우저 턴제 카드 게임</p>
+            <h1>숫자와 사칙연산으로 승부하는 싸칙 포커</h1>
+            <p>
+              싸칙 포커는 1~9 숫자 카드와 사칙연산 카드를 조합해 식을 만들고,
+              라운드마다 달라지는 승리룰에 맞춰 가장 유리한 결과를 노리는 카드 게임입니다.
+              포커처럼 베팅과 다이가 있고, 계산 게임처럼 식을 완성하는 판단이 중요합니다.
+            </p>
+            <div class="hero-actions">
+              <a class="primary-link" href="#play">게임 시작</a>
+              <a class="secondary-link" href="rules.html">상세 규칙 보기</a>
+            </div>
+          </div>
+          <div class="hero-cards" aria-label="카드 예시">
+            <div class="card">7</div>
+            <div class="card operator">×</div>
+            <div class="card joker">N?</div>
+          </div>
+        </section>
+
+        <section id="rules" class="content-section">
+          <p class="eyebrow">게임 개요</p>
+          <h2>10라운드 동안 코인을 가장 많이 모으세요</h2>
+          <p>
+            모든 플레이어는 50코인으로 시작합니다. 각 라운드는 숫자 카드 확인, 사칙 카드 확인,
+            식 공개의 3페이즈로 진행됩니다. 첫 라운드는 가장 큰 수를 만드는 사람이 승리하고,
+            이후 라운드는 이전 승자가 다음 승리룰을 고릅니다.
+          </p>
+          <div class="info-grid">
+            <article>
+              <h3>카드 구성</h3>
+              <p>숫자 카드는 1~9가 각 두 장씩 있고, 사칙 카드는 +, -, ×, ÷가 각 두 장씩 있습니다.</p>
+            </article>
+            <article>
+              <h3>조커</h3>
+              <p>숫자 조커는 원하는 숫자로, 사칙 조커는 원하는 연산자로 사용할 수 있습니다.</p>
+            </article>
+            <article>
+              <h3>승리룰</h3>
+              <p>가장 큰 수, 가장 작은 수, 1~50 랜덤 목표에 가장 가까운 수 중 하나로 판정합니다.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="content-section">
+          <p class="eyebrow">라운드 흐름</p>
+          <h2>3페이즈로 빠르게 진행됩니다</h2>
+          <ol class="flow-list">
+            <li><strong>1페이즈 숫자:</strong> 참가자는 숫자 카드 2장을 받고 베팅하거나 다이합니다.</li>
+            <li><strong>2페이즈 사칙:</strong> 남은 참가자는 사칙 카드를 1장 받고 다시 베팅합니다.</li>
+            <li><strong>3페이즈 식 공개:</strong> 두 숫자와 한 연산자로 식을 완성해 결과를 비교합니다.</li>
+          </ol>
+        </section>
+
+        <section id="strategy" class="content-section">
+          <p class="eyebrow">플레이 팁</p>
+          <h2>좋은 카드는 승리룰에 따라 달라집니다</h2>
+          <p>
+            큰 수 룰에서는 곱셈과 큰 숫자가 강하지만, 작은 수 룰에서는 나눗셈과 뺄셈이 의외의 역전을 만듭니다.
+            목표 숫자에 가까운 룰에서는 정확한 계산뿐 아니라 상대가 만들 수 있는 범위를 추측하는 것이 중요합니다.
+          </p>
+          <div class="info-grid">
+            <article>
+              <h3>곱셈은 폭발력</h3>
+              <p>높은 숫자 두 장과 × 카드는 큰 수 룰에서 강력합니다.</p>
+            </article>
+            <article>
+              <h3>나눗셈은 조절력</h3>
+              <p>목표 숫자 근처로 결과를 맞춰야 할 때 ÷는 세밀한 조정에 좋습니다.</p>
+            </article>
+            <article>
+              <h3>0코인 판매 룰</h3>
+              <p>코인을 모두 잃어도 공개 숫자 카드 판매로 다음 라운드 복귀 기회를 얻습니다.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="content-section faq-section">
+          <p class="eyebrow">FAQ</p>
+          <h2>자주 묻는 질문</h2>
+          <details>
+            <summary>온라인 멀티플레이는 어떻게 하나요?</summary>
+            <p>온라인 방을 만들고 표시되는 6자리 방 코드를 친구에게 공유하면 됩니다.</p>
+          </details>
+          <details>
+            <summary>광고는 게임 진행을 방해하나요?</summary>
+            <p>광고는 콘텐츠 영역을 중심으로 운영하며, 게임 조작을 막는 팝업이나 강제 클릭 구조를 사용하지 않습니다.</p>
+          </details>
+          <details>
+            <summary>개인정보를 수집하나요?</summary>
+            <p>게임 방 동기화를 위해 입력한 플레이어 이름과 방 상태가 Firebase에 저장될 수 있습니다. 자세한 내용은 개인정보처리방침을 확인하세요.</p>
+          </details>
+        </section>
+      </section>
+
+      <section id="play" class="setup-screen">
         <div class="brand-mark" aria-hidden="true">
           <span>7</span>
           <span>×</span>
           <span>?</span>
         </div>
-        <h1>싸칙 포커</h1>
-        <p>10라운드 동안 숫자와 사칙연산 카드로 식을 만들고, 라운드마다 달라지는 승리룰에 맞춰 코인을 겨루세요.</p>
+        <h2>플레이하기</h2>
+        <p>한 기기에서 바로 플레이하거나, 온라인 방 코드를 공유해 친구와 함께 플레이하세요.</p>
 
         <div class="setup-tabs" role="tablist" aria-label="플레이 방식">
           <button id="localTab" class="tab-button active" type="button">한 기기에서</button>
@@ -48,8 +165,6 @@
           <input id="roomCodeInput" type="text" maxlength="6" placeholder="예: A7K2Q9" />
           <p id="firebaseStatus" class="setup-note">Firebase 설정을 확인하는 중입니다.</p>
         </div>
-
-        <aside class="ad-shell hidden" data-ad-placement="setup" aria-label="광고"></aside>
       </section>
 
       <section id="lobby" class="lobby-screen hidden">
@@ -102,8 +217,6 @@
         <section class="play-area">
           <div id="players" class="players-grid"></div>
           <aside class="action-panel">
-            <aside class="ad-shell compact hidden" data-ad-placement="table" aria-label="광고"></aside>
-
             <div id="roomPanel" class="room-panel hidden">
               <span class="eyebrow">온라인 방</span>
               <strong id="activeRoomCode">------</strong>
@@ -155,6 +268,13 @@
       </section>
     </main>
 
-    <script type="module" src="app.js?v=20260524-ads-pub"></script>
+    <footer class="site-footer">
+      <a href="rules.html">상세 규칙</a>
+      <a href="privacy.html">개인정보처리방침</a>
+      <a href="terms.html">이용약관</a>
+      <a href="contact.html">문의</a>
+    </footer>
+
+    <script type="module" src="app.js?v=20260526-content"></script>
   </body>
 </html>
