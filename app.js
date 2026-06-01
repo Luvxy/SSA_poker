@@ -6,6 +6,8 @@ const ROOM_CODE_LENGTH = 6;
 const STARTING_COINS = 50;
 const MAX_ROUNDS = 10;
 const MARKET_PRICE = 1;
+const ROOM_COLLECTION = "ssaPokerRooms";
+const PUBLIC_ROOM = "public";
 
 const setupEl = document.querySelector("#play") || document.querySelector("#setup");
 const contentEl = document.querySelector("#content");
@@ -21,6 +23,9 @@ const roomCodeInputEl = document.querySelector("#roomCodeInput");
 const firebaseStatusEl = document.querySelector("#firebaseStatus");
 const createRoomEl = document.querySelector("#createRoom");
 const joinRoomEl = document.querySelector("#joinRoom");
+const quickMatchEl = document.querySelector("#quickMatch");
+const refreshRoomsEl = document.querySelector("#refreshRooms");
+const roomListEl = document.querySelector("#roomList");
 const startGameEl = document.querySelector("#startGame");
 const roomCodeLabelEl = document.querySelector("#roomCodeLabel");
 const copyRoomCodeEl = document.querySelector("#copyRoomCode");
@@ -60,6 +65,7 @@ const client = {
   firebase: null,
   roomRef: null,
   unsubscribe: null,
+  roomListUnsubscribe: null,
   roomCode: null,
   onlineReady: false,
 };
@@ -107,17 +113,24 @@ async function initFirebase() {
       db: firestoreModule.getFirestore(app),
       doc: firestoreModule.doc,
       getDoc: firestoreModule.getDoc,
+      getDocs: firestoreModule.getDocs,
       setDoc: firestoreModule.setDoc,
       onSnapshot: firestoreModule.onSnapshot,
+      collection: firestoreModule.collection,
+      query: firestoreModule.query,
+      where: firestoreModule.where,
       serverTimestamp: firestoreModule.serverTimestamp,
     };
     client.onlineReady = true;
     firebaseStatusEl.textContent = "온라인 방을 만들거나 참가할 수 있습니다.";
+    watchPublicRooms();
   } catch (error) {
     client.onlineReady = false;
     firebaseStatusEl.textContent = `Firebase 연결 실패: ${error.message}`;
     createRoomEl.disabled = true;
     joinRoomEl.disabled = true;
+    quickMatchEl.disabled = true;
+    refreshRoomsEl.disabled = true;
   }
 }
 
@@ -533,6 +546,7 @@ async function commitGame(next) {
   if (state.mode === "online" && client.roomRef) {
     await client.firebase.setDoc(client.roomRef, {
       ...sanitizeForFirestore(state),
+      playerCount: state.players.length,
       updatedAt: client.firebase.serverTimestamp(),
     }, { merge: true });
   }
@@ -541,13 +555,109 @@ async function commitGame(next) {
 function sanitizeForFirestore(game) {
   const clean = JSON.parse(JSON.stringify(game));
   delete clean.updatedAt;
+  delete clean.createdAt;
   return clean;
 }
 
-async function createRoom() {
+function watchPublicRooms() {
+  if (!roomListEl || !client.firebase) return;
+  if (client.roomListUnsubscribe) client.roomListUnsubscribe();
+
+  const roomsRef = client.firebase.collection(client.firebase.db, ROOM_COLLECTION);
+  const openRoomsQuery = client.firebase.query(roomsRef, client.firebase.where("status", "==", "lobby"));
+  client.roomListUnsubscribe = client.firebase.onSnapshot(openRoomsQuery, (snapshot) => {
+    const rooms = snapshot.docs.map((doc) => ({ code: doc.id, ...doc.data() }));
+    renderRoomList(rooms);
+  }, (error) => {
+    roomListEl.innerHTML = `<p class="empty-rooms">방 목록을 불러오지 못했습니다: ${escapeHtml(error.message)}</p>`;
+  });
+}
+
+function getOpenPublicRooms(rooms) {
+  return rooms
+    .filter((room) => room.visibility === PUBLIC_ROOM)
+    .filter((room) => room.status === "lobby")
+    .filter((room) => (room.players?.length || 0) < Number(room.maxPlayers || 4))
+    .sort((a, b) => getTimestampMillis(b.updatedAt) - getTimestampMillis(a.updatedAt));
+}
+
+function renderRoomList(rooms) {
+  if (!roomListEl) return;
+  const openRooms = getOpenPublicRooms(rooms);
+  if (openRooms.length === 0) {
+    roomListEl.innerHTML = `<p class="empty-rooms">대기 중인 공개 방이 없습니다. 빠른 매칭으로 새 방을 만들 수 있습니다.</p>`;
+    return;
+  }
+
+  roomListEl.innerHTML = openRooms
+    .map((room) => {
+      const host = room.players?.find((player) => player.id === room.hostId) || room.players?.[0];
+      const playerCount = room.players?.length || room.playerCount || 0;
+      return `
+        <button class="room-list-item" type="button" data-room-code="${escapeHtml(room.roomCode || room.code)}">
+          <span>
+            <strong>${escapeHtml(room.roomCode || room.code)}</strong>
+            <small>${escapeHtml(host?.name || "공개 방")}</small>
+          </span>
+          <em>${playerCount}/${room.maxPlayers || 4}</em>
+        </button>
+      `;
+    })
+    .join("");
+
+  roomListEl.querySelectorAll("[data-room-code]").forEach((button) => {
+    button.addEventListener("click", () => joinRoomByCode(button.dataset.roomCode, { fromList: true }));
+  });
+}
+
+async function refreshPublicRooms() {
+  if (!client.onlineReady || !roomListEl) return;
+  roomListEl.innerHTML = `<p class="empty-rooms">공개 방을 새로 찾는 중입니다.</p>`;
+  const rooms = await fetchOpenLobbyRooms();
+  renderRoomList(rooms);
+}
+
+async function quickMatch() {
+  if (!client.onlineReady) return;
+  firebaseStatusEl.textContent = "빈 공개 방을 찾는 중입니다.";
+  const rooms = getOpenPublicRooms(await fetchOpenLobbyRooms())
+    .filter((room) => !room.players?.some((player) => player.id === client.id));
+
+  for (const room of rooms) {
+    const joined = await joinRoomByCode(room.roomCode || room.code, { fromList: true, matchmaking: true });
+    if (joined) return;
+  }
+
+  await createRoom({ matchmaking: true });
+}
+
+async function fetchOpenLobbyRooms() {
+  const roomsRef = client.firebase.collection(client.firebase.db, ROOM_COLLECTION);
+  const openRoomsQuery = client.firebase.query(roomsRef, client.firebase.where("status", "==", "lobby"));
+  const snapshot = await client.firebase.getDocs(openRoomsQuery);
+  return snapshot.docs.map((doc) => ({ code: doc.id, ...doc.data() }));
+}
+
+function getTimestampMillis(timestamp) {
+  if (!timestamp) return 0;
+  if (typeof timestamp.toMillis === "function") return timestamp.toMillis();
+  if (typeof timestamp.seconds === "number") return timestamp.seconds * 1000;
+  return 0;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+async function createRoom(options = {}) {
   if (!client.onlineReady) return;
   const code = createRoomCode();
-  const roomRef = client.firebase.doc(client.firebase.db, "ssaPokerRooms", code);
+  const roomRef = client.firebase.doc(client.firebase.db, ROOM_COLLECTION, code);
   const game = createEmptyState();
   game.mode = "online";
   game.status = "lobby";
@@ -555,44 +665,57 @@ async function createRoom() {
   game.hostId = client.id;
   game.maxPlayers = Number(onlinePlayerCountEl.value);
   game.players = [createPlayer(client.id, getPlayerName(), 0)];
+  game.visibility = PUBLIC_ROOM;
+  game.matchMode = options.matchmaking ? "quick" : "public";
+  game.playerCount = game.players.length;
   await client.firebase.setDoc(roomRef, {
     ...game,
     roomCode: code,
+    createdAt: client.firebase.serverTimestamp(),
     updatedAt: client.firebase.serverTimestamp(),
   });
+  firebaseStatusEl.textContent = options.matchmaking ? "빈 방이 없어 새 공개 방을 만들었습니다." : "공개 방을 만들었습니다.";
   enterRoom(code, roomRef);
 }
 
 async function joinRoom() {
   if (!client.onlineReady) return;
   const code = normalizeRoomCode(roomCodeInputEl.value);
+  await joinRoomByCode(code);
+}
+
+async function joinRoomByCode(code, options = {}) {
+  if (!client.onlineReady) return false;
   if (!code) {
-    firebaseStatusEl.textContent = "참가할 방 코드를 입력하세요.";
-    return;
+    firebaseStatusEl.textContent = options.fromList ? "참가할 공개 방을 선택하세요." : "참가할 방 코드를 입력하세요.";
+    return false;
   }
-  const roomRef = client.firebase.doc(client.firebase.db, "ssaPokerRooms", code);
+  const roomRef = client.firebase.doc(client.firebase.db, ROOM_COLLECTION, code);
   const snapshot = await client.firebase.getDoc(roomRef);
   if (!snapshot.exists()) {
     firebaseStatusEl.textContent = "해당 방을 찾을 수 없습니다.";
-    return;
+    return false;
   }
   const game = snapshot.data();
   if (game.status !== "lobby") {
     firebaseStatusEl.textContent = "이미 게임이 시작된 방입니다.";
-    return;
+    return false;
   }
   if (game.players.length >= game.maxPlayers) {
     firebaseStatusEl.textContent = "방이 가득 찼습니다.";
-    return;
+    return false;
   }
   if (!game.players.some((player) => player.id === client.id)) {
     game.players.push(createPlayer(client.id, getPlayerName(), game.players.length));
+    game.playerCount = game.players.length;
     await client.firebase.setDoc(roomRef, {
       ...sanitizeForFirestore(game),
       updatedAt: client.firebase.serverTimestamp(),
     }, { merge: true });
   }
+  firebaseStatusEl.textContent = "공개 방에 참가했습니다.";
   enterRoom(code, roomRef);
+  return true;
 }
 
 function enterRoom(code, roomRef) {
@@ -621,7 +744,26 @@ function startOnlineGame() {
   startRound();
 }
 
-function leaveRoom() {
+async function leaveRoom() {
+  const roomRef = client.roomRef;
+  if (state.mode === "online" && roomRef && state.status === "lobby") {
+    const next = cloneGame(state);
+    const leavingIsHost = next.hostId === client.id;
+    next.players = next.players.filter((player) => player.id !== client.id);
+    next.playerCount = next.players.length;
+    if (leavingIsHost || next.players.length === 0) {
+      next.status = "closed";
+      next.visibility = "private";
+    } else {
+      next.hostId = next.players[0].id;
+    }
+    await client.firebase.setDoc(roomRef, {
+      ...sanitizeForFirestore(next),
+      playerCount: next.players.length,
+      updatedAt: client.firebase.serverTimestamp(),
+    }, { merge: true });
+  }
+
   if (client.unsubscribe) client.unsubscribe();
   client.unsubscribe = null;
   client.roomRef = null;
@@ -936,6 +1078,8 @@ onlineTabEl.addEventListener("click", () => switchSetupMode("online"));
 startGameEl.addEventListener("click", startLocalGame);
 createRoomEl.addEventListener("click", createRoom);
 joinRoomEl.addEventListener("click", joinRoom);
+quickMatchEl.addEventListener("click", quickMatch);
+refreshRoomsEl.addEventListener("click", refreshPublicRooms);
 startOnlineGameEl.addEventListener("click", startOnlineGame);
 leaveRoomEl.addEventListener("click", leaveRoom);
 copyRoomCodeEl.addEventListener("click", copyRoomCode);

@@ -156,9 +156,19 @@
             <button id="createRoom" type="button">방 만들기</button>
             <button id="joinRoom" type="button" class="secondary">방 참가</button>
           </div>
+          <button id="quickMatch" type="button" class="match-button">빠른 매칭</button>
           <label for="roomCodeInput">방 코드</label>
           <input id="roomCodeInput" type="text" maxlength="6" placeholder="예: A7K2Q9" />
           <p id="firebaseStatus" class="setup-note">Firebase 설정을 확인하는 중입니다.</p>
+          <div class="room-browser">
+            <div class="room-browser-header">
+              <span>공개 방 목록</span>
+              <button id="refreshRooms" type="button" class="small-button secondary">새로고침</button>
+            </div>
+            <div id="roomList" class="room-list" aria-live="polite">
+              <p class="empty-rooms">대기 중인 공개 방을 찾는 중입니다.</p>
+            </div>
+          </div>
         </div>
       </section>
 

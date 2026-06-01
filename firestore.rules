@@ -1,0 +1,25 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /ssaPokerRooms/{roomId} {
+      allow get, list: if true;
+      allow create, update: if isValidRoom();
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+
+  function isValidRoom() {
+    return request.resource.data.keys().hasAll(["mode", "status", "phase", "players", "maxPlayers"])
+      && request.resource.data.mode == "online"
+      && request.resource.data.maxPlayers is int
+      && request.resource.data.maxPlayers >= 2
+      && request.resource.data.maxPlayers <= 4
+      && request.resource.data.players is list
+      && request.resource.data.players.size() <= request.resource.data.maxPlayers;
+  }
+}
