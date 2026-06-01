@@ -192,6 +192,7 @@ function createPlayer(id, name, index) {
 }
 
 function startLocalGame() {
+  if (!playerCountEl) return;
   const count = Number(playerCountEl.value);
   state = createEmptyState();
   state.mode = "local";
@@ -1049,10 +1050,10 @@ function loadAdsenseScript(publisherId) {
 
 function switchSetupMode(mode) {
   const online = mode === "online";
-  localTabEl.classList.toggle("active", !online);
-  onlineTabEl.classList.toggle("active", online);
-  localSetupEl.classList.toggle("hidden", online);
-  onlineSetupEl.classList.toggle("hidden", !online);
+  localTabEl?.classList.toggle("active", !online);
+  onlineTabEl?.classList.toggle("active", online);
+  localSetupEl?.classList.toggle("hidden", online);
+  onlineSetupEl?.classList.toggle("hidden", !online);
 }
 
 function applyRoomLink() {
@@ -1073,9 +1074,9 @@ onlinePlayerCountEl.addEventListener("change", async () => {
   state.maxPlayers = Number(onlinePlayerCountEl.value);
   await commitGame(state);
 });
-localTabEl.addEventListener("click", () => switchSetupMode("local"));
-onlineTabEl.addEventListener("click", () => switchSetupMode("online"));
-startGameEl.addEventListener("click", startLocalGame);
+localTabEl?.addEventListener("click", () => switchSetupMode("local"));
+onlineTabEl?.addEventListener("click", () => switchSetupMode("online"));
+startGameEl?.addEventListener("click", startLocalGame);
 createRoomEl.addEventListener("click", createRoom);
 joinRoomEl.addEventListener("click", joinRoom);
 quickMatchEl.addEventListener("click", quickMatch);

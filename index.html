@@ -132,24 +132,9 @@
           <span>?</span>
         </div>
         <h2>플레이하기</h2>
-        <p>한 기기에서 바로 플레이하거나, 온라인 방 코드를 공유해 친구와 함께 플레이하세요.</p>
+        <p>공개 방을 만들거나 빠른 매칭으로 친구와 함께 플레이하세요.</p>
 
-        <div class="setup-tabs" role="tablist" aria-label="플레이 방식">
-          <button id="localTab" class="tab-button active" type="button">한 기기에서</button>
-          <button id="onlineTab" class="tab-button" type="button">온라인 방</button>
-        </div>
-
-        <div id="localSetup" class="setup-panel">
-          <label for="playerCount">플레이어 수</label>
-          <select id="playerCount">
-            <option value="2">2명</option>
-            <option value="3">3명</option>
-            <option value="4" selected>4명</option>
-          </select>
-          <button id="startGame" type="button">로컬 게임 시작</button>
-        </div>
-
-        <div id="onlineSetup" class="setup-panel hidden">
+        <div id="onlineSetup" class="setup-panel">
           <label for="playerName">내 이름</label>
           <input id="playerName" type="text" maxlength="16" placeholder="플레이어" />
           <div class="button-row">
