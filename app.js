@@ -852,6 +852,8 @@ async function copyRoomCode() {
 }
 
 async function initAds() {
+  if (document.documentElement.dataset.platform === "appintos" || document.body.classList.contains("appintos-shell")) return;
+
   let adsConfig;
   try {
     const module = await import(`./ads-config.js?cache=${Date.now()}`);

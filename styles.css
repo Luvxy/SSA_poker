@@ -883,3 +883,103 @@ output {
     flex-direction: column;
   }
 }
+
+body.appintos-shell {
+  color: #191f28;
+  background: #f2f4f6;
+}
+
+body.appintos-shell .site-header,
+body.appintos-shell .site-footer,
+body.appintos-shell .content-shell {
+  display: none;
+}
+
+body.appintos-shell .app {
+  min-height: 100dvh;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom));
+}
+
+body.appintos-shell .setup-screen {
+  width: min(520px, 100%);
+  min-height: calc(100dvh - 34px);
+  gap: 20px;
+  margin: 0 auto;
+  padding: 22px 0;
+  color: #191f28;
+}
+
+body.appintos-shell .setup-screen p,
+body.appintos-shell .setup-note,
+body.appintos-shell .setup-panel label {
+  color: #4e5968;
+}
+
+body.appintos-shell .brand-mark {
+  width: 184px;
+  height: 108px;
+}
+
+body.appintos-shell .brand-mark span {
+  border: 0;
+  color: #3182f6;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(49, 130, 246, 0.16);
+}
+
+body.appintos-shell button,
+body.appintos-shell .tab-button.active {
+  color: #fff;
+  background: #3182f6;
+  box-shadow: none;
+}
+
+body.appintos-shell button:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+body.appintos-shell .secondary,
+body.appintos-shell .tab-button {
+  color: #4e5968;
+  background: #e5e8eb;
+  box-shadow: none;
+}
+
+body.appintos-shell input,
+body.appintos-shell select {
+  border-color: #d1d6db;
+  background: #fff;
+}
+
+body.appintos-shell .lobby-screen {
+  min-height: calc(100dvh - 34px);
+}
+
+body.appintos-shell .lobby-header,
+body.appintos-shell .lobby-body,
+body.appintos-shell .top-bar,
+body.appintos-shell .player-seat,
+body.appintos-shell .room-panel,
+body.appintos-shell .turn-card,
+body.appintos-shell .bet-controls,
+body.appintos-shell .expression-controls,
+body.appintos-shell .rule-controls,
+body.appintos-shell .market-panel,
+body.appintos-shell .result-panel {
+  border: 0;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(0, 29, 58, 0.08);
+}
+
+body.appintos-shell .top-bar {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+body.appintos-shell .play-area {
+  grid-template-columns: 1fr;
+}
+
+body.appintos-shell .players-grid {
+  grid-template-columns: 1fr;
+}
