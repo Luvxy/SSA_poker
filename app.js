@@ -8,6 +8,30 @@ const MAX_ROUNDS = 10;
 const MARKET_PRICE = 1;
 const ROOM_COLLECTION = "ssaPokerRooms";
 const PUBLIC_ROOM = "public";
+const MONETIZATION_STORAGE_KEY = "ssaPokerMonetization";
+const REWARDED_AD_DAILY_LIMIT = 3;
+const INTERSTITIAL_AD_GROUP_ID = "game_end_interstitial";
+const REWARDED_AD_GROUP_ID = "rewarded_cosmetic_ticket";
+const DEFAULT_EQUIPPED_COSMETICS = { cardBack: "default-card", table: "default-table", badge: "default-badge" };
+const COSMETIC_ITEMS = [
+  { id: "default-card", type: "cardBack", name: "Basic Card", ownedByDefault: true },
+  { id: "default-table", type: "table", name: "Basic Table", ownedByDefault: true },
+  { id: "default-badge", type: "badge", name: "No Badge", ownedByDefault: true },
+  { id: "classic-card", type: "cardBack", name: "Classic Card" },
+  { id: "classic-table", type: "table", name: "Classic Table" },
+  { id: "neon-card", type: "cardBack", name: "Neon Card" },
+  { id: "neon-table", type: "table", name: "Neon Table" },
+  { id: "gold-card", type: "cardBack", name: "Gold Card" },
+  { id: "gold-table", type: "table", name: "Gold Table" },
+  { id: "gold-badge", type: "badge", name: "Gold Badge" },
+];
+const SHOP_PRODUCTS = [
+  { sku: "skin_pack_classic", type: "nonConsumable", name: "Classic Skin Pack", description: "Classic card back + table", grants: ["classic-card", "classic-table"] },
+  { sku: "skin_pack_neon", type: "nonConsumable", name: "Neon Skin Pack", description: "Neon card back + table", grants: ["neon-card", "neon-table"] },
+  { sku: "skin_pack_gold", type: "nonConsumable", name: "Gold Skin Pack", description: "Gold card back + table + badge", grants: ["gold-card", "gold-table", "gold-badge"] },
+  { sku: "cosmetic_ticket_5", type: "consumable", name: "5 Cosmetic Tickets", description: "Random cosmetic unlock tickets", tickets: 5 },
+  { sku: "cosmetic_ticket_15", type: "consumable", name: "15 Cosmetic Tickets", description: "Random cosmetic unlock tickets", tickets: 15 },
+];
 
 const setupEl = document.querySelector("#play") || document.querySelector("#setup");
 const contentEl = document.querySelector("#content");
@@ -26,6 +50,15 @@ const joinRoomEl = document.querySelector("#joinRoom");
 const quickMatchEl = document.querySelector("#quickMatch");
 const refreshRoomsEl = document.querySelector("#refreshRooms");
 const roomListEl = document.querySelector("#roomList");
+const openCosmeticsEl = document.querySelector("#openCosmetics");
+const cosmeticsModalEl = document.querySelector("#cosmeticsModal");
+const closeCosmeticsEl = document.querySelector("#closeCosmetics");
+const cosmeticTicketCountEl = document.querySelector("#cosmeticTicketCount");
+const watchRewardAdEl = document.querySelector("#watchRewardAd");
+const cosmeticMessageEl = document.querySelector("#cosmeticMessage");
+const ownedCosmeticsEl = document.querySelector("#ownedCosmetics");
+const shopProductsEl = document.querySelector("#shopProducts");
+const useCosmeticTicketEl = document.querySelector("#useCosmeticTicket");
 const startGameEl = document.querySelector("#startGame");
 const roomCodeLabelEl = document.querySelector("#roomCodeLabel");
 const copyRoomCodeEl = document.querySelector("#copyRoomCode");
@@ -68,6 +101,10 @@ const client = {
   roomListUnsubscribe: null,
   roomCode: null,
   onlineReady: false,
+  monetization: loadMonetizationState(),
+  monetizationApi: null,
+  iapProducts: {},
+  lastGameOverAdKey: null,
 };
 
 let state = createEmptyState();
@@ -181,6 +218,7 @@ function createPlayer(id, name, index) {
   return {
     id,
     name: name || `플레이어 ${index + 1}`,
+    cosmetics: getPublicCosmetics(),
     chips: STARTING_COINS,
     hand: [],
     folded: false,
@@ -515,6 +553,7 @@ function moveAfterRound(game) {
 function finishGame(game) {
   game.phase = "gameOver";
   game.status = "gameOver";
+  game.gameOverId = `${Date.now()}-${Math.random()}`;
   const richest = Math.max(...game.players.map((player) => player.chips));
   const winners = game.players.filter((player) => player.chips === richest);
   const rows = game.players
@@ -542,6 +581,7 @@ function cloneGame(game) {
 }
 
 async function commitGame(next) {
+  syncMyPlayerCosmetics(next);
   state = next;
   render();
   if (state.mode === "online" && client.roomRef) {
@@ -558,6 +598,352 @@ function sanitizeForFirestore(game) {
   delete clean.updatedAt;
   delete clean.createdAt;
   return clean;
+}
+
+function loadMonetizationState() {
+  const defaults = {
+    ownedCosmetics: COSMETIC_ITEMS.filter((item) => item.ownedByDefault).map((item) => item.id),
+    equippedCosmetics: { ...DEFAULT_EQUIPPED_COSMETICS },
+    cosmeticTickets: 0,
+    adRewardHistory: {},
+    purchaseHistory: {},
+    completedGames: 0,
+  };
+  try {
+    const saved = JSON.parse(localStorage.getItem(MONETIZATION_STORAGE_KEY) || "{}");
+    return {
+      ...defaults,
+      ...saved,
+      ownedCosmetics: [...new Set([...(defaults.ownedCosmetics || []), ...(saved.ownedCosmetics || [])])],
+      equippedCosmetics: { ...defaults.equippedCosmetics, ...(saved.equippedCosmetics || {}) },
+      adRewardHistory: saved.adRewardHistory || {},
+      purchaseHistory: saved.purchaseHistory || {},
+    };
+  } catch (error) {
+    return defaults;
+  }
+}
+
+function saveMonetizationState() {
+  localStorage.setItem(MONETIZATION_STORAGE_KEY, JSON.stringify(client.monetization));
+}
+
+function getPublicCosmetics() {
+  return { ...DEFAULT_EQUIPPED_COSMETICS, ...client.monetization.equippedCosmetics };
+}
+
+function syncMyPlayerCosmetics(game = state) {
+  const player = game.players?.find((candidate) => candidate.id === client.id);
+  if (player) player.cosmetics = getPublicCosmetics();
+}
+
+function getCosmeticItem(id) {
+  return COSMETIC_ITEMS.find((item) => item.id === id);
+}
+
+function ownsCosmetic(id) {
+  return client.monetization.ownedCosmetics.includes(id);
+}
+
+function grantCosmetics(ids) {
+  let changed = false;
+  for (const id of ids) {
+    if (!ownsCosmetic(id)) {
+      client.monetization.ownedCosmetics.push(id);
+      changed = true;
+    }
+  }
+  if (changed) saveMonetizationState();
+  return changed;
+}
+
+function grantTickets(count) {
+  client.monetization.cosmeticTickets += count;
+  saveMonetizationState();
+  renderCosmetics();
+}
+
+function equipCosmetic(id) {
+  const item = getCosmeticItem(id);
+  if (!item || !ownsCosmetic(id)) return;
+  client.monetization.equippedCosmetics[item.type] = id;
+  saveMonetizationState();
+  syncMyPlayerCosmetics();
+  if (state.mode === "online" && client.roomRef) commitGame(cloneGame(state));
+  renderCosmetics();
+  render();
+}
+
+function useCosmeticTicket() {
+  if (client.monetization.cosmeticTickets <= 0) {
+    setCosmeticMessage("사용할 꾸미기 티켓이 없습니다.");
+    return;
+  }
+  const candidates = COSMETIC_ITEMS.filter((item) => !item.ownedByDefault && !ownsCosmetic(item.id));
+  if (candidates.length === 0) {
+    setCosmeticMessage("해금할 꾸미기가 모두 보유 중입니다.");
+    return;
+  }
+  const item = candidates[Math.floor(Math.random() * candidates.length)];
+  client.monetization.cosmeticTickets -= 1;
+  grantCosmetics([item.id]);
+  saveMonetizationState();
+  setCosmeticMessage(`${item.name} 해금 완료`);
+  renderCosmetics();
+}
+
+function getTodayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getRewardedAdCount() {
+  return client.monetization.adRewardHistory[getTodayKey()] || 0;
+}
+
+function recordRewardedAd() {
+  const today = getTodayKey();
+  client.monetization.adRewardHistory[today] = getRewardedAdCount() + 1;
+  saveMonetizationState();
+}
+
+async function getMonetizationApi() {
+  if (client.monetizationApi) return client.monetizationApi;
+  try {
+    const module = await import("@apps-in-toss/web-framework");
+    client.monetizationApi = {
+      GoogleAdMob: module.GoogleAdMob,
+      IAP: module.IAP,
+    };
+  } catch (error) {
+    client.monetizationApi = { GoogleAdMob: null, IAP: null };
+  }
+  return client.monetizationApi;
+}
+
+function isFeatureSupported(feature) {
+  if (!feature) return false;
+  if (typeof feature.isSupported === "function") return feature.isSupported();
+  if (typeof feature.isSupported === "boolean") return feature.isSupported;
+  return true;
+}
+
+async function showFullScreenAd(adGroupId, rewardCallback) {
+  const { GoogleAdMob } = await getMonetizationApi();
+  const loadAd = GoogleAdMob?.loadAppsInTossAdMob;
+  const showAd = GoogleAdMob?.showAppsInTossAdMob;
+  if (!loadAd || !showAd) return false;
+  if (!isFeatureSupported(loadAd) || !isFeatureSupported(showAd)) return false;
+
+  return new Promise((resolve) => {
+    let rewarded = false;
+    let resolved = false;
+    let cleanupLoad = () => {};
+    let cleanupShow = () => {};
+    const finish = (success) => {
+      if (resolved) return;
+      resolved = true;
+      cleanupLoad?.();
+      cleanupShow?.();
+      resolve(rewardCallback ? rewarded : success);
+    };
+    const timeout = window.setTimeout(() => finish(false), 10000);
+    const showLoadedAd = () => {
+      cleanupShow = showAd({
+        options: { adGroupId },
+        onEvent: (event) => {
+          if (event.type === "userEarnedReward") {
+            rewarded = true;
+            rewardCallback?.(event);
+          }
+          if (["dismissed", "failedToShow"].includes(event.type)) {
+            window.clearTimeout(timeout);
+            finish(event.type !== "failedToShow");
+          }
+        },
+        onError: () => {
+          window.clearTimeout(timeout);
+          finish(false);
+        },
+      });
+    };
+    cleanupLoad = loadAd({
+      options: { adGroupId },
+      onEvent: (event) => {
+        if (event.type === "loaded") showLoadedAd();
+      },
+      onError: () => {
+        window.clearTimeout(timeout);
+        finish(false);
+      },
+    });
+  });
+}
+
+async function showGameEndInterstitial() {
+  const key = state.gameOverId || `${state.roundNumber}-${state.status}`;
+  if (client.lastGameOverAdKey === key) return;
+  client.lastGameOverAdKey = key;
+  client.monetization.completedGames += 1;
+  saveMonetizationState();
+  if (client.monetization.completedGames <= 1) return;
+  await showFullScreenAd(INTERSTITIAL_AD_GROUP_ID);
+}
+
+async function watchRewardedAd() {
+  if (getRewardedAdCount() >= REWARDED_AD_DAILY_LIMIT) {
+    setCosmeticMessage("오늘 받을 수 있는 광고 보상을 모두 받았습니다.");
+    renderCosmetics();
+    return;
+  }
+  setCosmeticMessage("광고를 불러오는 중입니다.");
+  const success = await showFullScreenAd(REWARDED_AD_GROUP_ID, () => {
+    recordRewardedAd();
+    grantTickets(1);
+  });
+  if (!success) {
+    setCosmeticMessage("광고를 불러오지 못했어요.");
+    return;
+  }
+  setCosmeticMessage("꾸미기 티켓 1장을 받았습니다.");
+  renderCosmetics();
+}
+
+async function buyShopProduct(sku) {
+  const product = SHOP_PRODUCTS.find((item) => item.sku === sku);
+  if (!product) return;
+  const { IAP } = await getMonetizationApi();
+  if (!IAP?.createOneTimePurchaseOrder || !isFeatureSupported(IAP.createOneTimePurchaseOrder)) {
+    setCosmeticMessage("현재 환경에서는 인앱결제를 사용할 수 없습니다.");
+    return;
+  }
+
+  try {
+    await IAP.createOneTimePurchaseOrder({
+      options: {
+        sku,
+        processProductGrant: async ({ orderId } = {}) => {
+          grantProduct(product, orderId || `${sku}-${Date.now()}`);
+          if (IAP.completeProductGrant && orderId) await IAP.completeProductGrant({ params: { orderId } });
+          return true;
+        },
+      },
+    });
+  } catch (error) {
+    setCosmeticMessage("구매를 완료하지 못했습니다.");
+  }
+}
+
+async function restorePendingPurchases() {
+  const { IAP } = await getMonetizationApi();
+  if (!IAP?.getPendingOrders || !IAP?.completeProductGrant) return;
+  try {
+    const result = await IAP.getPendingOrders();
+    const orders = result?.orders || result || [];
+    for (const order of orders) {
+      const product = SHOP_PRODUCTS.find((item) => item.sku === order.sku);
+      if (!product) continue;
+      grantProduct(product, order.orderId);
+      await IAP.completeProductGrant({ params: { orderId: order.orderId } });
+    }
+  } catch (error) {
+    // Pending purchase recovery is best-effort.
+  }
+}
+
+function grantProduct(product, orderId) {
+  if (orderId && client.monetization.purchaseHistory[orderId]) return;
+  if (product.grants) grantCosmetics(product.grants);
+  if (product.tickets) client.monetization.cosmeticTickets += product.tickets;
+  if (orderId) client.monetization.purchaseHistory[orderId] = { sku: product.sku, grantedAt: Date.now() };
+  saveMonetizationState();
+  setCosmeticMessage(`${product.name} 지급 완료`);
+  renderCosmetics();
+}
+
+function setCosmeticMessage(message) {
+  if (cosmeticMessageEl) cosmeticMessageEl.textContent = message;
+}
+
+async function openCosmetics() {
+  setHidden(cosmeticsModalEl, false);
+  await loadIapProducts();
+  renderCosmetics();
+}
+
+function closeCosmetics() {
+  setHidden(cosmeticsModalEl, true);
+}
+
+function renderCosmetics() {
+  if (!cosmeticTicketCountEl || !ownedCosmeticsEl || !shopProductsEl) return;
+  cosmeticTicketCountEl.textContent = String(client.monetization.cosmeticTickets);
+  const rewardCount = getRewardedAdCount();
+  watchRewardAdEl.disabled = rewardCount >= REWARDED_AD_DAILY_LIMIT;
+  watchRewardAdEl.textContent = rewardCount >= REWARDED_AD_DAILY_LIMIT
+    ? "오늘 광고 보상 완료"
+    : `광고 보고 티켓 받기 (${REWARDED_AD_DAILY_LIMIT - rewardCount}회 남음)`;
+  useCosmeticTicketEl.disabled = client.monetization.cosmeticTickets <= 0;
+
+  ownedCosmeticsEl.innerHTML = client.monetization.ownedCosmetics
+    .map((id) => getCosmeticItem(id))
+    .filter(Boolean)
+    .map((item) => {
+      const equipped = client.monetization.equippedCosmetics[item.type] === item.id;
+      return `
+        <article class="cosmetic-item">
+          <div>
+            <strong>${escapeHtml(item.name)}</strong>
+            <span>${escapeHtml(item.type)}</span>
+          </div>
+          <button type="button" class="small-button ${equipped ? "secondary" : ""}" data-equip-cosmetic="${escapeHtml(item.id)}" ${equipped ? "disabled" : ""}>
+            ${equipped ? "장착 중" : "장착"}
+          </button>
+        </article>
+      `;
+    })
+    .join("");
+
+  shopProductsEl.innerHTML = SHOP_PRODUCTS
+    .map((product) => {
+      const owned = product.type === "nonConsumable" && product.grants?.every((id) => ownsCosmetic(id));
+      return `
+        <article class="cosmetic-item">
+          <div>
+            <strong>${escapeHtml(product.name)}</strong>
+            <span>${escapeHtml(getProductDescription(product))}</span>
+          </div>
+          <button type="button" class="small-button" data-buy-product="${escapeHtml(product.sku)}" ${owned ? "disabled" : ""}>
+            ${owned ? "보유" : "구매"}
+          </button>
+        </article>
+      `;
+    })
+    .join("");
+
+  ownedCosmeticsEl.querySelectorAll("[data-equip-cosmetic]").forEach((button) => {
+    button.addEventListener("click", () => equipCosmetic(button.dataset.equipCosmetic));
+  });
+  shopProductsEl.querySelectorAll("[data-buy-product]").forEach((button) => {
+    button.addEventListener("click", () => buyShopProduct(button.dataset.buyProduct));
+  });
+}
+
+async function loadIapProducts() {
+  const { IAP } = await getMonetizationApi();
+  if (!IAP?.getProductItemList || !isFeatureSupported(IAP.getProductItemList)) return;
+  try {
+    const result = await IAP.getProductItemList();
+    const items = result?.products || result?.productItems || result?.items || result || [];
+    client.iapProducts = Object.fromEntries(items.map((item) => [item.sku || item.productId || item.id, item]));
+  } catch (error) {
+    // Store product metadata is optional for local preview.
+  }
+}
+
+function getProductDescription(product) {
+  const iapProduct = client.iapProducts[product.sku];
+  const price = iapProduct?.priceLabel || iapProduct?.price?.label || iapProduct?.price?.displayAmount || iapProduct?.displayPrice;
+  return price ? `${product.description} · ${price}` : product.description;
 }
 
 function watchPublicRooms() {
@@ -713,6 +1099,12 @@ async function joinRoomByCode(code, options = {}) {
       ...sanitizeForFirestore(game),
       updatedAt: client.firebase.serverTimestamp(),
     }, { merge: true });
+  } else {
+    syncMyPlayerCosmetics(game);
+    await client.firebase.setDoc(roomRef, {
+      ...sanitizeForFirestore(game),
+      updatedAt: client.firebase.serverTimestamp(),
+    }, { merge: true });
   }
   firebaseStatusEl.textContent = "공개 방에 참가했습니다.";
   enterRoom(code, roomRef);
@@ -828,6 +1220,7 @@ function renderLobby() {
 }
 
 function render() {
+  applyTableCosmetic();
   roundNumberEl.textContent = Math.max(1, state.roundNumber);
   targetNumberEl.textContent = getRuleLabel();
   phaseNameEl.textContent = getPhaseLabel();
@@ -845,12 +1238,12 @@ function renderPlayers() {
       const activeIndex = state.phase === "expression" ? state.expressionIndex : state.actorIndex;
       const isActive = index === activeIndex && ["number", "operator", "expression"].includes(state.phase);
       const reveal = shouldRevealHand(player, isActive);
-      const hand = player.hand.map((card) => renderCard(card, reveal)).join("");
+      const hand = player.hand.map((card) => renderCard(card, reveal, player)).join("");
       const status = getPlayerStatus(player);
       return `
-        <article class="player-seat ${isActive ? "active" : ""} ${!player.inRound ? "folded" : ""}">
+        <article class="player-seat ${getTableSkinClass(player.cosmetics?.table)} ${isActive ? "active" : ""} ${!player.inRound ? "folded" : ""}">
           <div class="seat-header">
-            <h3>${player.name}</h3>
+            <h3>${renderPlayerName(player)}</h3>
             <span class="chip-count">${player.chips}코인</span>
           </div>
           <div class="hand">${hand || "<span class=\"empty-hand\">카드 없음</span>"}</div>
@@ -878,11 +1271,36 @@ function shouldRevealHand(player, isActive) {
   return player.id === client.id;
 }
 
-function renderCard(card, revealed) {
-  if (!revealed) return `<div class="card back">?</div>`;
+function renderCard(card, revealed, owner = null) {
+  if (!revealed) return `<div class="card back ${getCardBackClass(owner?.cosmetics?.cardBack)}">?</div>`;
   const className = card.kind.includes("joker") ? "joker" : card.kind;
   const label = card.kind === "number-joker" ? "N?" : card.kind === "operator-joker" ? "O?" : card.value;
   return `<div class="card ${className}">${label}</div>`;
+}
+
+function renderPlayerName(player) {
+  const badge = getCosmeticItem(player.cosmetics?.badge);
+  const badgeLabel = badge && badge.id !== "default-badge" ? `<span class="player-badge">${escapeHtml(badge.name)}</span>` : "";
+  return `${escapeHtml(player.name)} ${badgeLabel}`;
+}
+
+function applyTableCosmetic() {
+  tableEl.classList.remove("table-skin-classic", "table-skin-neon", "table-skin-gold");
+  tableEl.classList.add(getTableSkinClass(getPublicCosmetics().table));
+}
+
+function getCardBackClass(id) {
+  if (id === "classic-card") return "card-back-classic";
+  if (id === "neon-card") return "card-back-neon";
+  if (id === "gold-card") return "card-back-gold";
+  return "";
+}
+
+function getTableSkinClass(id) {
+  if (id === "classic-table") return "table-skin-classic";
+  if (id === "neon-table") return "table-skin-neon";
+  if (id === "gold-table") return "table-skin-gold";
+  return "";
 }
 
 function renderMarket() {
@@ -944,8 +1362,45 @@ function renderPanel() {
   } else if (state.phase === "gameOver") {
     turnTitleEl.textContent = "게임 종료";
     turnMessageEl.textContent = "10라운드가 모두 끝났습니다.";
-    resultPanelEl.innerHTML = state.resultHtml;
+    resultPanelEl.innerHTML = `${state.resultHtml}${renderGameOverActions()}`;
+    bindGameOverActions();
+    showGameEndInterstitial();
   }
+}
+
+function renderGameOverActions() {
+  return `
+    <div class="result-actions">
+      <button id="restartGame" type="button" ${isHost() ? "" : "disabled"}>한 판 더</button>
+      <button id="resultRewardAd" type="button" class="secondary">꾸미기 티켓 받기</button>
+      <button id="resultOpenShop" type="button" class="secondary">상점</button>
+    </div>
+  `;
+}
+
+function bindGameOverActions() {
+  document.querySelector("#restartGame")?.addEventListener("click", restartGame);
+  document.querySelector("#resultRewardAd")?.addEventListener("click", watchRewardedAd);
+  document.querySelector("#resultOpenShop")?.addEventListener("click", openCosmetics);
+}
+
+function restartGame() {
+  if (!isHost()) return;
+  const players = state.players.map((player, index) => ({
+    ...createPlayer(player.id, player.name, index),
+    cosmetics: player.cosmetics || getPublicCosmetics(),
+  }));
+  const next = createEmptyState();
+  next.mode = "online";
+  next.status = "playing";
+  next.hostId = state.hostId;
+  next.maxPlayers = state.maxPlayers;
+  next.players = players;
+  next.visibility = state.visibility || PUBLIC_ROOM;
+  next.matchMode = state.matchMode || "public";
+  next.playerCount = players.length;
+  state = next;
+  startRound();
 }
 
 function renderExpressionInputs(player) {
@@ -1081,6 +1536,10 @@ createRoomEl.addEventListener("click", createRoom);
 joinRoomEl.addEventListener("click", joinRoom);
 quickMatchEl.addEventListener("click", quickMatch);
 refreshRoomsEl.addEventListener("click", refreshPublicRooms);
+openCosmeticsEl.addEventListener("click", openCosmetics);
+closeCosmeticsEl.addEventListener("click", closeCosmetics);
+watchRewardAdEl.addEventListener("click", watchRewardedAd);
+useCosmeticTicketEl.addEventListener("click", useCosmeticTicket);
 startOnlineGameEl.addEventListener("click", startOnlineGame);
 leaveRoomEl.addEventListener("click", leaveRoom);
 copyRoomCodeEl.addEventListener("click", copyRoomCode);
@@ -1093,3 +1552,5 @@ confirmRuleEl.addEventListener("click", chooseRuleAndStartRound);
 applyRoomLink();
 initAds();
 initFirebase();
+restorePendingPurchases();
+renderCosmetics();

@@ -706,6 +706,51 @@ select {
   background-size: 22px 22px;
 }
 
+.card.back.card-back-classic {
+  background:
+    linear-gradient(135deg, rgba(233, 189, 77, 0.34), transparent 55%),
+    #2f5f52;
+}
+
+.card.back.card-back-neon {
+  background:
+    linear-gradient(135deg, rgba(49, 130, 246, 0.86), rgba(217, 92, 73, 0.72)),
+    #111827;
+}
+
+.card.back.card-back-gold {
+  color: rgba(50, 36, 8, 0.7);
+  background:
+    linear-gradient(135deg, #f7d67a, #b88118),
+    #e9bd4d;
+}
+
+.table-screen.table-skin-classic,
+.player-seat.table-skin-classic {
+  --gold: #d6aa4b;
+}
+
+.table-screen.table-skin-neon,
+.player-seat.table-skin-neon {
+  --gold: #57d7ff;
+}
+
+.table-screen.table-skin-gold,
+.player-seat.table-skin-gold {
+  --gold: #f6c453;
+}
+
+.player-badge {
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  padding: 3px 8px;
+  color: #191714;
+  background: var(--gold);
+  font-size: 11px;
+  font-weight: 950;
+}
+
 .seat-footer {
   display: flex;
   justify-content: space-between;
@@ -883,6 +928,77 @@ output {
   margin-bottom: 8px;
 }
 
+.result-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.cosmetics-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: end center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.cosmetics-sheet {
+  width: min(860px, 100%);
+  max-height: min(760px, calc(100dvh - 32px));
+  display: grid;
+  gap: 14px;
+  overflow: auto;
+  border-radius: 8px;
+  padding: 18px;
+  background: var(--paper);
+  box-shadow: var(--shadow);
+}
+
+.cosmetics-header,
+.cosmetics-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cosmetics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.cosmetics-grid section,
+.cosmetic-list {
+  display: grid;
+  gap: 10px;
+}
+
+.cosmetic-item {
+  min-height: 68px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--paper-soft);
+}
+
+.cosmetic-item div {
+  display: grid;
+  gap: 3px;
+}
+
+.cosmetic-item span {
+  color: #6e6254;
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .score-list {
   display: grid;
   gap: 8px;
@@ -950,6 +1066,11 @@ output {
   .lobby-header {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .result-actions,
+  .cosmetics-grid {
+    grid-template-columns: 1fr;
   }
 }
 

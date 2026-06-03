@@ -154,6 +154,7 @@
               <p class="empty-rooms">대기 중인 공개 방을 찾는 중입니다.</p>
             </div>
           </div>
+          <button id="openCosmetics" type="button" class="secondary">꾸미기</button>
         </div>
       </section>
 
@@ -264,6 +265,34 @@
       <a href="terms.html">이용약관</a>
       <a href="contact.html">문의</a>
     </footer>
+
+    <section id="cosmeticsModal" class="cosmetics-modal hidden" aria-live="polite">
+      <div class="cosmetics-sheet">
+        <header class="cosmetics-header">
+          <div>
+            <span class="eyebrow">Shop</span>
+            <h2>꾸미기</h2>
+          </div>
+          <button id="closeCosmetics" type="button" class="secondary small-button">닫기</button>
+        </header>
+        <div class="cosmetics-summary">
+          <strong>꾸미기 티켓 <span id="cosmeticTicketCount">0</span>장</strong>
+          <button id="watchRewardAd" type="button">광고 보고 티켓 받기</button>
+        </div>
+        <p id="cosmeticMessage" class="setup-note">카드 뒷면, 테이블, 배지는 게임 결과에 영향을 주지 않습니다.</p>
+        <div class="cosmetics-grid">
+          <section>
+            <h3>보유함</h3>
+            <div id="ownedCosmetics" class="cosmetic-list"></div>
+            <button id="useCosmeticTicket" type="button" class="secondary">티켓으로 랜덤 해금</button>
+          </section>
+          <section>
+            <h3>상점</h3>
+            <div id="shopProducts" class="cosmetic-list"></div>
+          </section>
+        </div>
+      </div>
+    </section>
 
     <script type="module" src="appintos.js?v=20260601-appintos"></script>
     <script type="module" src="app.js?v=20260601-appintos"></script>
