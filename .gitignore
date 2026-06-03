@@ -1,2 +1,6 @@
 firebase-config.js
 .firebase/
+node_modules/
+dist/
+.granite/
+*.ait
