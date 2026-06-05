@@ -14,23 +14,23 @@ const INTERSTITIAL_AD_GROUP_ID = "game_end_interstitial";
 const REWARDED_AD_GROUP_ID = "rewarded_cosmetic_ticket";
 const DEFAULT_EQUIPPED_COSMETICS = { cardBack: "default-card", table: "default-table", badge: "default-badge" };
 const COSMETIC_ITEMS = [
-  { id: "default-card", type: "cardBack", name: "Basic Card", ownedByDefault: true },
-  { id: "default-table", type: "table", name: "Basic Table", ownedByDefault: true },
-  { id: "default-badge", type: "badge", name: "No Badge", ownedByDefault: true },
-  { id: "classic-card", type: "cardBack", name: "Classic Card" },
-  { id: "classic-table", type: "table", name: "Classic Table" },
-  { id: "neon-card", type: "cardBack", name: "Neon Card" },
-  { id: "neon-table", type: "table", name: "Neon Table" },
-  { id: "gold-card", type: "cardBack", name: "Gold Card" },
-  { id: "gold-table", type: "table", name: "Gold Table" },
-  { id: "gold-badge", type: "badge", name: "Gold Badge" },
+  { id: "default-card", type: "cardBack", name: "기본 카드 뒷면", ownedByDefault: true },
+  { id: "default-table", type: "table", name: "기본 테이블", ownedByDefault: true },
+  { id: "default-badge", type: "badge", name: "배지 없음", ownedByDefault: true },
+  { id: "classic-card", type: "cardBack", name: "클래식 카드 뒷면" },
+  { id: "classic-table", type: "table", name: "클래식 테이블" },
+  { id: "neon-card", type: "cardBack", name: "네온 카드 뒷면" },
+  { id: "neon-table", type: "table", name: "네온 테이블" },
+  { id: "gold-card", type: "cardBack", name: "골드 카드 뒷면" },
+  { id: "gold-table", type: "table", name: "골드 테이블" },
+  { id: "gold-badge", type: "badge", name: "골드 승리 배지" },
 ];
 const SHOP_PRODUCTS = [
-  { sku: "skin_pack_classic", type: "nonConsumable", name: "Classic Skin Pack", description: "Classic card back + table", grants: ["classic-card", "classic-table"] },
-  { sku: "skin_pack_neon", type: "nonConsumable", name: "Neon Skin Pack", description: "Neon card back + table", grants: ["neon-card", "neon-table"] },
-  { sku: "skin_pack_gold", type: "nonConsumable", name: "Gold Skin Pack", description: "Gold card back + table + badge", grants: ["gold-card", "gold-table", "gold-badge"] },
-  { sku: "cosmetic_ticket_5", type: "consumable", name: "5 Cosmetic Tickets", description: "Random cosmetic unlock tickets", tickets: 5 },
-  { sku: "cosmetic_ticket_15", type: "consumable", name: "15 Cosmetic Tickets", description: "Random cosmetic unlock tickets", tickets: 15 },
+  { sku: "skin_pack_classic", type: "nonConsumable", name: "클래식 스킨팩", description: "클래식 카드 뒷면 + 테이블", grants: ["classic-card", "classic-table"] },
+  { sku: "skin_pack_neon", type: "nonConsumable", name: "네온 스킨팩", description: "네온 카드 뒷면 + 테이블", grants: ["neon-card", "neon-table"] },
+  { sku: "skin_pack_gold", type: "nonConsumable", name: "골드 스킨팩", description: "골드 카드 뒷면 + 테이블 + 승리 배지", grants: ["gold-card", "gold-table", "gold-badge"] },
+  { sku: "cosmetic_ticket_5", type: "consumable", name: "꾸미기 티켓 5장", description: "랜덤 꾸미기 해금 티켓", tickets: 5 },
+  { sku: "cosmetic_ticket_15", type: "consumable", name: "꾸미기 티켓 15장", description: "랜덤 꾸미기 해금 티켓", tickets: 15 },
 ];
 
 const setupEl = document.querySelector("#play") || document.querySelector("#setup");
@@ -641,6 +641,13 @@ function getCosmeticItem(id) {
   return COSMETIC_ITEMS.find((item) => item.id === id);
 }
 
+function getCosmeticTypeLabel(type) {
+  if (type === "cardBack") return "카드 뒷면";
+  if (type === "table") return "테이블";
+  if (type === "badge") return "배지";
+  return "꾸미기";
+}
+
 function ownsCosmetic(id) {
   return client.monetization.ownedCosmetics.includes(id);
 }
@@ -893,7 +900,7 @@ function renderCosmetics() {
         <article class="cosmetic-item">
           <div>
             <strong>${escapeHtml(item.name)}</strong>
-            <span>${escapeHtml(item.type)}</span>
+            <span>${escapeHtml(getCosmeticTypeLabel(item.type))}</span>
           </div>
           <button type="button" class="small-button ${equipped ? "secondary" : ""}" data-equip-cosmetic="${escapeHtml(item.id)}" ${equipped ? "disabled" : ""}>
             ${equipped ? "장착 중" : "장착"}
