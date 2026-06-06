@@ -152,8 +152,8 @@ function getClientId() {
 async function initFirebase() {
   try {
     const firebaseConfig = await loadFirebaseConfig();
-    const appModule = await import(`https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-app.js`);
-    const firestoreModule = await import(`https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-firestore.js`);
+    const appModule = await import(/* @vite-ignore */ `https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-app.js`);
+    const firestoreModule = await import(/* @vite-ignore */ `https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-firestore.js`);
     const app = appModule.initializeApp(firebaseConfig);
     client.firebase = {
       db: firestoreModule.getFirestore(app),
