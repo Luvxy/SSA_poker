@@ -8,6 +8,15 @@ const MAX_ROUNDS = 10;
 const MARKET_PRICE = 1;
 const ROOM_COLLECTION = "ssaPokerRooms";
 const PUBLIC_ROOM = "public";
+const DEFAULT_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDIDluPt9_CpidnjOwBFC9h1v-hIdot5Tg",
+  authDomain: "ssa-poker.firebaseapp.com",
+  projectId: "ssa-poker",
+  storageBucket: "ssa-poker.firebasestorage.app",
+  messagingSenderId: "846079515585",
+  appId: "1:846079515585:web:cf69f5e9ae6b460d9d6d40",
+  measurementId: "G-L53RZY51WB",
+};
 const MONETIZATION_STORAGE_KEY = "ssaPokerMonetization";
 const REWARDED_AD_DAILY_LIMIT = 3;
 const INTERSTITIAL_AD_GROUP_ID = "game_end_interstitial";
@@ -179,12 +188,16 @@ async function loadFirebaseConfig() {
     // Firebase console snippets often contain bare SDK imports, so fall back to reading the config object.
   }
 
-  const response = await fetch(`./firebase-config.js?cache=${Date.now()}`);
-  if (!response.ok) throw new Error("firebase-config.js를 찾을 수 없습니다.");
-  const source = await response.text();
-  const match = source.match(/(?:const|let|var)\s+firebaseConfig\s*=\s*({[\s\S]*?});/);
-  if (!match) throw new Error("firebaseConfig 객체를 찾을 수 없습니다.");
-  return Function(`"use strict"; return (${match[1]});`)();
+  try {
+    const response = await fetch(`./firebase-config.js?cache=${Date.now()}`);
+    if (!response.ok) throw new Error("firebase-config.js를 찾을 수 없습니다.");
+    const source = await response.text();
+    const match = source.match(/(?:const|let|var)\s+firebaseConfig\s*=\s*({[\s\S]*?});/);
+    if (!match) throw new Error("firebaseConfig 객체를 찾을 수 없습니다.");
+    return Function(`"use strict"; return (${match[1]});`)();
+  } catch (error) {
+    return DEFAULT_FIREBASE_CONFIG;
+  }
 }
 
 function createDeck() {
