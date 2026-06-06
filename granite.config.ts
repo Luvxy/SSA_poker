@@ -1,7 +1,7 @@
 import { defineConfig } from "@apps-in-toss/web-framework/config";
 
 export default defineConfig({
-  appName: "ssachik-poker",
+  appName: "ssapoker",
   brand: {
     displayName: "싸칙 포커",
     primaryColor: "#3182F6",

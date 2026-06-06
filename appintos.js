@@ -1,5 +1,5 @@
 const appintosConfig = {
-  appName: "ssachik-poker",
+  appName: "ssapoker",
   displayName: "싸칙 포커",
   version: "0.1.0-appintos",
 };

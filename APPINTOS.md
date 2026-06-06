@@ -6,7 +6,7 @@ This branch is the Apps in Toss mini-app copy of SSA Poker.
 
 - Korean name: 싸칙 포커
 - English name: SSA Poker
-- Proposed appName: `ssachik-poker`
+- Proposed appName: `ssapoker`
 - Entry point: `index.html`
 - Runtime flag: `window.SSA_POKER_APPINTOS`
 
@@ -52,7 +52,7 @@ Register these one-time purchase products. Keep the SKU values exactly as writte
 
 ## Release verification
 
-- Build the latest artifact with `npm run build` and upload `ssachik-poker.ait`; do not commit the `.ait` file.
+- Build the latest artifact with `npm run build` and upload the generated `.ait` file; do not commit the `.ait` file.
 - In the Apps in Toss test environment, verify room creation, room list join, quick match, room code join, game start, and one completed round with at least two devices.
 - Verify rewarded ads grant exactly one cosmetic ticket and stop after three rewards on the same day.
 - Verify interstitial ads are not requested after the first completed game and are requested from the second completed game onward.
